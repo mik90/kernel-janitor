@@ -2,7 +2,7 @@ use std::{cmp::Ordering, convert::TryFrom, option::Option, path::PathBuf};
 /// Format: <major>.<minor>.<patch>-gentoo
 ///         or <major>.<minor>.<patch>-rc<release_candidate_num>-gentoo
 ///         or <major>.<minor>.<patch>-gentoo.old
-#[derive(Eq)]
+#[derive(Eq, Debug)]
 struct KernelVersion {
     major: u32,
     minor: u32,
@@ -103,14 +103,14 @@ impl Ord for KernelVersion {
             self.minor,
             self.patch,
             self.release_candidate_num,
-            self.is_old,
+            !self.is_old,
         )
             .cmp(&(
                 other.major,
                 other.minor,
                 other.patch,
                 other.release_candidate_num,
-                other.is_old,
+                !other.is_old,
             ))
     }
 }
@@ -127,9 +127,12 @@ impl PartialEq for KernelVersion {
             && self.minor == other.minor
             && self.patch == other.patch
             && self.is_old == other.is_old
-            && self.release_candidate_num.is_some()
-            && other.release_candidate_num.is_some()
-            && self.release_candidate_num.unwrap() == other.release_candidate_num.unwrap()
+            // Ensure both do or don't have a release candidate
+            && self.release_candidate_num.is_some() == other.release_candidate_num.is_some()
+            // At this point,they both have or don't have a release candidate number.
+            // Compare values, default to zero. If neither have it they'll be equal.
+            // If they both have it, they'll unwrap valid values.
+            && self.release_candidate_num.unwrap_or(0) == other.release_candidate_num.unwrap_or(0)
     }
 }
 #[cfg(test)]
@@ -166,5 +169,72 @@ mod tests {
         assert_eq!(ver.is_old(), true);
         assert!(ver.release_candidate_num().is_some());
         assert_eq!(ver.release_candidate_num().unwrap(), 1234);
+    }
+
+    #[test]
+    fn kernel_not_equal() {
+        let error_msg = "Could not construct test KernelVersion!";
+        let newer = KernelVersion::try_from("linux-4.10.5-gentoo").expect(error_msg);
+        let older = KernelVersion::try_from("linux-4.10.0-gentoo").expect(error_msg);
+        assert_ne!(newer, older);
+    }
+
+    #[test]
+    fn kernel_equal() {
+        let error_msg = "Could not construct test KernelVersion!";
+        let ver = KernelVersion::try_from("linux-2.6.0-gentoo").expect(error_msg);
+        assert_eq!(ver, ver);
+    }
+    #[test]
+    fn kernel_greater_than() {
+        let error_msg = "Could not construct test KernelVersion!";
+        let newer = KernelVersion::try_from("linux-4.10.5-gentoo").expect(error_msg);
+        let older = KernelVersion::try_from("linux-4.10.0-gentoo").expect(error_msg);
+        assert!(newer > older);
+    }
+
+    #[test]
+    fn order_kernel_versions() {
+        let error_msg = "Could not construct test KernelVersion!";
+        let mut versions: Vec<KernelVersion> = vec![
+            KernelVersion::try_from("linux-4.10.5-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.5-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-5.11.0-rc1-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-2.6.0-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-rc8-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-rc8-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-rc1-gentoo.old").expect(error_msg),
+        ];
+
+        // Ascending sort
+        let sorted_versions: Vec<KernelVersion> = vec![
+            KernelVersion::try_from("linux-2.6.0-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-rc1-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-rc8-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-rc8-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.5-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.5-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-5.11.0-rc1-gentoo").expect(error_msg),
+        ];
+
+        assert_eq!(versions.len(), sorted_versions.len());
+
+        versions.sort();
+        println!("versions.sort():");
+        for ver in versions.iter() {
+            println!("    {:?}", ver);
+        }
+        println!("sorted_versions:");
+        for ver in sorted_versions.iter() {
+            println!("    {:?}", ver);
+        }
+
+        let zipped = versions.iter().zip(sorted_versions.iter());
+        for vers in zipped {
+            assert_eq!(vers.0, vers.1);
+        }
+        //assert_eq!(versions, sorted_versions);
     }
 }
