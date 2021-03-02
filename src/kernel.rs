@@ -203,6 +203,9 @@ impl KernelSearch {
     pub fn run(&self) -> Vec<InstalledKernel> {
         // TODO Actually run search
 
+        // Create a KernelVersion with each result in a search
+        // Check if that KernelVersion is already present as an InstalledKernel
+
         // Search for vmlinuz
         // Search for config
         // Search for system map
