@@ -1,7 +1,9 @@
 use std::{cmp::Ordering, convert::TryFrom, option::Option, path::PathBuf};
-/// Format: <major>.<minor>.<patch>-gentoo
-///         or <major>.<minor>.<patch>-rc<release_candidate_num>-gentoo
-///         or <major>.<minor>.<patch>-gentoo.old
+
+/// A kernel version can be found as a config, vmlinuz binary, system map, or source directory.
+/// Format: SomeIgnoredValue-<major>.<minor>.<patch>-gentoo
+///         or SomeIgnoredValue-<major>.<minor>.<patch>-rc<release_candidate_num>-gentoo
+///         or SomeIgnoredValue-<major>.<minor>.<patch>-gentoo.old
 #[derive(Eq, Debug)]
 struct KernelVersion {
     major: u32,
@@ -11,12 +13,19 @@ struct KernelVersion {
     is_old: bool,
 }
 struct InstalledKernel {
-    version: KernelVersion,
-    module_path: Option<PathBuf>,
-    vmlinuz_path: Option<PathBuf>,
-    source_path: Option<PathBuf>,
-    config_path: Option<PathBuf>,
-    system_map_path: Option<PathBuf>,
+    pub version: KernelVersion,
+    pub module_path: Option<PathBuf>,
+    pub source_path: Option<PathBuf>,
+    pub vmlinuz_path: Option<PathBuf>,
+    pub config_path: Option<PathBuf>,
+    pub system_map_path: Option<PathBuf>,
+}
+
+struct KernelSearch {
+    module_search_path: PathBuf,
+    source_search_path: PathBuf,
+    // Expect to find vmlinuz, config, and system map in this search path
+    install_search_path: PathBuf,
 }
 
 impl KernelVersion {
@@ -135,6 +144,73 @@ impl PartialEq for KernelVersion {
             && self.release_candidate_num.unwrap_or(0) == other.release_candidate_num.unwrap_or(0)
     }
 }
+
+impl InstalledKernel {
+    pub fn new(
+        version: KernelVersion,
+        module_path: Option<PathBuf>,
+        vmlinuz_path: Option<PathBuf>,
+        source_path: Option<PathBuf>,
+        config_path: Option<PathBuf>,
+        system_map_path: Option<PathBuf>,
+    ) -> InstalledKernel {
+        InstalledKernel {
+            version,
+            module_path,
+            vmlinuz_path,
+            source_path,
+            config_path,
+            system_map_path,
+        }
+    }
+
+    /// True if any of the paths are empty (not found)
+    /// False if all paths are Some
+    pub fn files_missing(&self) -> bool {
+        self.module_path.is_none()
+            || self.vmlinuz_path.is_none()
+            || self.source_path.is_none()
+            || self.config_path.is_none()
+            || self.system_map_path.is_none()
+    }
+}
+
+impl KernelSearch {
+    pub fn new() -> KernelSearch {
+        KernelSearch {
+            module_search_path: PathBuf::from("/lib/modules"),
+            source_search_path: PathBuf::from("/usr/src"),
+            install_search_path: PathBuf::from("/boot/EFI/Gentoo"),
+        }
+    }
+
+    /// Reference: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
+    pub fn module_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
+        self.module_search_path = dir;
+        self
+    }
+
+    pub fn source_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
+        self.source_search_path = dir;
+        self
+    }
+
+    pub fn install_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
+        self.install_search_path = dir;
+        self
+    }
+
+    pub fn run(&self) -> Vec<InstalledKernel> {
+        // TODO Actually run search
+
+        // Search for vmlinuz
+        // Search for config
+        // Search for system map
+        // Search for source dir
+        // Search for module path
+        Vec::new()
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,6 +261,7 @@ mod tests {
         let ver = KernelVersion::try_from("linux-2.6.0-gentoo").expect(error_msg);
         assert_eq!(ver, ver);
     }
+
     #[test]
     fn kernel_greater_than() {
         let error_msg = "Could not construct test KernelVersion!";
@@ -193,6 +270,28 @@ mod tests {
         assert!(newer > older);
     }
 
+    #[test]
+    fn kernel_invalid() {
+        let invalid = KernelVersion::try_from("SoYouThink-ImAKernel");
+        assert!(invalid.is_err());
+    }
+
+    #[test]
+    fn kernel_version_from_config() {
+        let valid = KernelVersion::try_from("config-5.11.0-gentoo");
+        assert!(valid.is_ok());
+    }
+    #[test]
+    fn kernel_version_from_system_map() {
+        let valid = KernelVersion::try_from("System.map-5.11.0-gentoo");
+        assert!(valid.is_ok());
+    }
+
+    #[test]
+    fn kernel_version_from_vmlinuz() {
+        let valid = KernelVersion::try_from("vmlinuz-5.11.0-gentoo");
+        assert!(valid.is_ok());
+    }
     #[test]
     fn order_kernel_versions() {
         let error_msg = "Could not construct test KernelVersion!";
@@ -236,5 +335,33 @@ mod tests {
             assert_eq!(vers.0, vers.1);
         }
         //assert_eq!(versions, sorted_versions);
+    }
+
+    #[test]
+    fn files_missing_true() {
+        let version = KernelVersion::new(2, 6, 0, None, false);
+        let installed_kernel = InstalledKernel::new(
+            version,
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+            None,
+        );
+        assert_eq!(installed_kernel.files_missing(), true);
+    }
+
+    #[test]
+    fn files_missing_false() {
+        let version = KernelVersion::new(2, 6, 0, None, false);
+        let installed_kernel = InstalledKernel::new(
+            version,
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+            Some(PathBuf::from("./temp")),
+        );
+        assert_eq!(installed_kernel.files_missing(), false);
     }
 }
