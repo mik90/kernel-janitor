@@ -5,4 +5,4 @@ Helper for building and installing kernels with Gentoo
 * use builder pattern to create configurable search
 * Parse config files
 * Parse command line input 
-* Logic for deleting old files
+* Logic for deleting old kernels and related files

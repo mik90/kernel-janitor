@@ -10,4 +10,7 @@ Cargo.lock
 **/*.rs.bk
 
 # Reference impl
-/build_kernel/
+build_kernel/
+
+# test folder
+unit-test-temp/

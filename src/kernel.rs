@@ -1,4 +1,6 @@
-use std::{cmp::Ordering, convert::TryFrom, option::Option, path::PathBuf};
+use std::{cmp::Ordering, convert::TryFrom, io, option::Option, path::PathBuf};
+
+use crate::dir_search;
 
 /// A kernel version can be found as a config, vmlinuz binary, system map, or source directory.
 /// Format: SomeIgnoredValue-<major>.<minor>.<patch>-gentoo
@@ -200,18 +202,24 @@ impl KernelSearch {
         self
     }
 
-    pub fn run(&self) -> Vec<InstalledKernel> {
+    pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
         // TODO Actually run search
 
         // Create a KernelVersion with each result in a search
         // Check if that KernelVersion is already present as an InstalledKernel
 
         // Search for vmlinuz
+        let vmlinuzes = dir_search::all_entries_with_prefix("vmlinuz-", &self.install_search_path)?;
         // Search for config
+        let configs = dir_search::all_entries_with_prefix("config-", &self.install_search_path)?;
         // Search for system map
+        let system_maps =
+            dir_search::all_entries_with_prefix("System.map-", &self.install_search_path)?;
         // Search for source dir
+        let source_dirs = dir_search::all_entries_with_prefix("linux", &self.source_search_path)?;
         // Search for module path
-        Vec::new()
+        let module_dirs = dir_search::all_entries(&self.module_search_path)?;
+        Ok(Vec::new())
     }
 }
 #[cfg(test)]
@@ -337,7 +345,6 @@ mod tests {
         for vers in zipped {
             assert_eq!(vers.0, vers.1);
         }
-        //assert_eq!(versions, sorted_versions);
     }
 
     #[test]

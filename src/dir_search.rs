@@ -6,7 +6,7 @@ use std::{
 };
 
 /// Finds all files with a prefix in a directory
-pub fn find_all_entries_with_prefix(prefix: &str, dir: &Path) -> io::Result<Vec<PathBuf>> {
+pub fn all_entries_with_prefix(prefix: &str, dir: &Path) -> io::Result<Vec<PathBuf>> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -19,6 +19,15 @@ pub fn find_all_entries_with_prefix(prefix: &str, dir: &Path) -> io::Result<Vec<
         {
             entries.push(path);
         }
+    }
+    Ok(entries)
+}
+
+/// Finds all files with a prefix in a directory
+pub fn all_entries(dir: &Path) -> io::Result<Vec<PathBuf>> {
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        entries.push(entry?.path());
     }
     Ok(entries)
 }
@@ -80,7 +89,7 @@ mod tests {
         assert!(setup_test_dir().is_ok());
 
         let search_dir = get_test_dir();
-        let res = find_all_entries_with_prefix("new", &search_dir);
+        let res = all_entries_with_prefix("new", &search_dir);
         assert!(res.is_ok());
         assert_eq!(res.unwrap().len(), 1);
 
