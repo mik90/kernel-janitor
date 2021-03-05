@@ -19,6 +19,17 @@ pub fn all_paths_with_prefix(prefix: &str, dir: &Path) -> io::Result<Vec<PathBuf
     Ok(paths)
 }
 
+/// From a full path, just get the `file_name()` as a &str
+pub fn filename_from_path(path: &Path) -> io::Result<String> {
+    let err = io::Error::new(
+        io::ErrorKind::Other,
+        format!("Could not get filename from {:?}", path),
+    );
+    path.file_name()
+        .ok_or(err)
+        .map(|os_str| os_str.to_string_lossy().to_string())
+}
+
 /// Finds all files with a prefix in a directory
 pub fn all_paths(dir: &Path) -> io::Result<Vec<PathBuf>> {
     let paths: Vec<PathBuf> = fs::read_dir(dir)?
@@ -91,5 +102,14 @@ mod tests {
         assert_eq!(res.unwrap().len(), 1);
 
         assert!(cleanup_test_dir().is_ok());
+    }
+
+    #[test]
+    fn test_filename_from_path() {
+        let path = Path::new("/tmp/some/path/a-filename.txt");
+        let filename = filename_from_path(path);
+        assert!(filename.is_ok());
+        let filename = filename.unwrap();
+        assert_eq!(filename.as_str(), "a-filename.txt");
     }
 }

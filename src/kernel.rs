@@ -1,5 +1,6 @@
 use std::{
-    cmp::Ordering, collections::HashMap, convert::TryFrom, io, option::Option, path::PathBuf,
+    borrow::Borrow, cmp::Ordering, collections::HashMap, convert::TryFrom, io, option::Option,
+    path::Path, path::PathBuf,
 };
 
 use crate::dir_search;
@@ -179,6 +180,14 @@ impl InstalledKernel {
     }
 }
 
+enum InstalledItem {
+    KernelImage(PathBuf),
+    Config(PathBuf),
+    SystemMap(PathBuf),
+    SourceDir(PathBuf),
+    ModuleDir(PathBuf),
+}
+
 impl KernelSearch {
     pub fn new() -> KernelSearch {
         KernelSearch {
@@ -204,31 +213,77 @@ impl KernelSearch {
         self
     }
 
-    pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
-        // TODO not impl'd yet
-
+    fn add_item_to_map(
+        item: InstalledItem,
+        map: &mut HashMap<KernelVersion, InstalledKernel>,
+    ) -> io::Result<()> {
         // - Create a (KernelVersion, path) with each result in a search
         // - Check if that KernelVersion is already present as an InstalledKernel
         //   - If it is, add the path to the InstalledKernel
         //   - otherwise, create a new InstalledKernel with the pair
+        match item {
+            InstalledItem::SystemMap(pathbuf) => {
+                let filename = dir_search::filename_from_path(&pathbuf)?;
 
+                let err = io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Could not parse {:?} as a KernelVersion", filename),
+                );
+                let version = KernelVersion::try_from(filename).map_err(|_| err)?;
+                match map.get_mut(&version) {
+                    Some(installed_kernel) => installed_kernel.system_map_path = Some(pathbuf),
+                    None => {
+                        map.insert(
+                            version,
+                            InstalledKernel::new(version, None, None, None, None, Some(pathbuf)),
+                        );
+                    }
+                }
+            }
+            InstalledItem::KernelImage(p) => {}
+            InstalledItem::Config(p) => {}
+            InstalledItem::SourceDir(p) => {}
+            InstalledItem::ModuleDir(p) => {}
+        }
+        Ok(())
+    }
+
+    pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
         let mut kernel_map: HashMap<KernelVersion, InstalledKernel> = HashMap::new();
 
         // Search for vmlinuz
-        let vmlinuzes = dir_search::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?;
+        let kernel_images: Vec<_> =
+            dir_search::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?
+                .into_iter()
+                .map(|path| InstalledItem::KernelImage(path))
+                .collect();
 
         // Search for config
-        let configs = dir_search::all_paths_with_prefix("config-", &self.install_search_path)?;
+        let configs: Vec<_> =
+            dir_search::all_paths_with_prefix("config-", &self.install_search_path)?
+                .into_iter()
+                .map(|path| InstalledItem::Config(path))
+                .collect();
 
         // Search for system map
-        let system_maps =
-            dir_search::all_paths_with_prefix("System.map-", &self.install_search_path)?;
+        let system_maps: Vec<_> =
+            dir_search::all_paths_with_prefix("System.map-", &self.install_search_path)?
+                .into_iter()
+                .map(|path| InstalledItem::SystemMap(path))
+                .collect();
 
         // Search for source dir
-        let source_dirs = dir_search::all_paths_with_prefix("linux", &self.source_search_path)?;
+        let source_dirs: Vec<_> =
+            dir_search::all_paths_with_prefix("linux", &self.source_search_path)?
+                .into_iter()
+                .map(|path| InstalledItem::SourceDir(path))
+                .collect();
 
         // Search for module path
-        let module_dirs = dir_search::all_paths(&self.module_search_path)?;
+        let module_dirs: Vec<_> = dir_search::all_paths(&self.module_search_path)?
+            .into_iter()
+            .map(|path| InstalledItem::ModuleDir(path))
+            .collect();
 
         Ok(Vec::new())
     }
