@@ -1,4 +1,6 @@
-use std::{cmp::Ordering, convert::TryFrom, io, option::Option, path::PathBuf};
+use std::{
+    cmp::Ordering, collections::HashMap, convert::TryFrom, io, option::Option, path::PathBuf,
+};
 
 use crate::dir_search;
 
@@ -6,7 +8,7 @@ use crate::dir_search;
 /// Format: SomeIgnoredValue-<major>.<minor>.<patch>-gentoo
 ///         or SomeIgnoredValue-<major>.<minor>.<patch>-rc<release_candidate_num>-gentoo
 ///         or SomeIgnoredValue-<major>.<minor>.<patch>-gentoo.old
-#[derive(Eq, Debug)]
+#[derive(Hash, Eq, Debug)]
 struct KernelVersion {
     major: u32,
     minor: u32,
@@ -203,22 +205,31 @@ impl KernelSearch {
     }
 
     pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
-        // TODO Actually run search
+        // TODO not impl'd yet
 
-        // Create a KernelVersion with each result in a search
-        // Check if that KernelVersion is already present as an InstalledKernel
+        // - Create a (KernelVersion, path) with each result in a search
+        // - Check if that KernelVersion is already present as an InstalledKernel
+        //   - If it is, add the path to the InstalledKernel
+        //   - otherwise, create a new InstalledKernel with the pair
+
+        let mut kernel_map: HashMap<KernelVersion, InstalledKernel> = HashMap::new();
 
         // Search for vmlinuz
-        let vmlinuzes = dir_search::all_entries_with_prefix("vmlinuz-", &self.install_search_path)?;
+        let vmlinuzes = dir_search::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?;
+
         // Search for config
-        let configs = dir_search::all_entries_with_prefix("config-", &self.install_search_path)?;
+        let configs = dir_search::all_paths_with_prefix("config-", &self.install_search_path)?;
+
         // Search for system map
         let system_maps =
-            dir_search::all_entries_with_prefix("System.map-", &self.install_search_path)?;
+            dir_search::all_paths_with_prefix("System.map-", &self.install_search_path)?;
+
         // Search for source dir
-        let source_dirs = dir_search::all_entries_with_prefix("linux", &self.source_search_path)?;
+        let source_dirs = dir_search::all_paths_with_prefix("linux", &self.source_search_path)?;
+
         // Search for module path
-        let module_dirs = dir_search::all_entries(&self.module_search_path)?;
+        let module_dirs = dir_search::all_paths(&self.module_search_path)?;
+
         Ok(Vec::new())
     }
 }

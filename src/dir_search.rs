@@ -1,35 +1,32 @@
 use std::{
-    fs,
-    fs::ReadDir,
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 
 /// Finds all files with a prefix in a directory
-pub fn all_entries_with_prefix(prefix: &str, dir: &Path) -> io::Result<Vec<PathBuf>> {
-    let mut entries = Vec::new();
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .starts_with(prefix)
-        {
-            entries.push(path);
-        }
-    }
-    Ok(entries)
+pub fn all_paths_with_prefix(prefix: &str, dir: &Path) -> io::Result<Vec<PathBuf>> {
+    let paths: Vec<PathBuf> = fs::read_dir(dir)?
+        .into_iter()
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .starts_with(prefix)
+        })
+        .collect();
+    Ok(paths)
 }
 
 /// Finds all files with a prefix in a directory
-pub fn all_entries(dir: &Path) -> io::Result<Vec<PathBuf>> {
-    let mut entries = Vec::new();
-    for entry in fs::read_dir(dir)? {
-        entries.push(entry?.path());
-    }
-    Ok(entries)
+pub fn all_paths(dir: &Path) -> io::Result<Vec<PathBuf>> {
+    let paths: Vec<PathBuf> = fs::read_dir(dir)?
+        .into_iter()
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .collect();
+    Ok(paths)
 }
 
 #[cfg(test)]
@@ -89,7 +86,7 @@ mod tests {
         assert!(setup_test_dir().is_ok());
 
         let search_dir = get_test_dir();
-        let res = all_entries_with_prefix("new", &search_dir);
+        let res = all_paths_with_prefix("new", &search_dir);
         assert!(res.is_ok());
         assert_eq!(res.unwrap().len(), 1);
 
