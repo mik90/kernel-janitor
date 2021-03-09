@@ -181,11 +181,11 @@ impl InstalledKernel {
 }
 
 enum InstalledItem {
-    KernelImage(PathBuf),
-    Config(PathBuf),
-    SystemMap(PathBuf),
-    SourceDir(PathBuf),
-    ModuleDir(PathBuf),
+    KernelImage,
+    Config,
+    SystemMap,
+    SourceDir,
+    ModuleDir,
 }
 
 impl KernelSearch {
@@ -212,34 +212,17 @@ impl KernelSearch {
         self.install_search_path = dir;
         self
     }
-
     fn add_item_to_map(
         item: InstalledItem,
+        version: KernelVersion,
+        path: PathBuf,
         map: &mut HashMap<KernelVersion, InstalledKernel>,
-    ) -> io::Result<()> {
-        // - Create a (KernelVersion, path) with each result in a search
+    ) -> Result<(), &str> {
         // - Check if that KernelVersion is already present as an InstalledKernel
         //   - If it is, add the path to the InstalledKernel
         //   - otherwise, create a new InstalledKernel with the pair
         match item {
-            InstalledItem::SystemMap(pathbuf) => {
-                let filename = dir_search::filename_from_path(&pathbuf)?;
-
-                let err = io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Could not parse {:?} as a KernelVersion", filename),
-                );
-                let version = KernelVersion::try_from(filename).map_err(|_| err)?;
-                match map.get_mut(&version) {
-                    Some(installed_kernel) => installed_kernel.system_map_path = Some(pathbuf),
-                    None => {
-                        map.insert(
-                            version,
-                            InstalledKernel::new(version, None, None, None, None, Some(pathbuf)),
-                        );
-                    }
-                }
-            }
+            InstalledItem::SystemMap(pathbuf) => {}
             InstalledItem::KernelImage(p) => {}
             InstalledItem::Config(p) => {}
             InstalledItem::SourceDir(p) => {}
@@ -247,43 +230,76 @@ impl KernelSearch {
         }
         Ok(())
     }
-
     pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
-        let mut kernel_map: HashMap<KernelVersion, InstalledKernel> = HashMap::new();
-
+        // TODO Make all of these into a list
         // Search for vmlinuz
         let kernel_images: Vec<_> =
             dir_search::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?
                 .into_iter()
-                .map(|path| InstalledItem::KernelImage(path))
+                .map(|path| (InstalledItem::KernelImage, path))
                 .collect();
 
         // Search for config
         let configs: Vec<_> =
             dir_search::all_paths_with_prefix("config-", &self.install_search_path)?
                 .into_iter()
-                .map(|path| InstalledItem::Config(path))
+                .map(|path| (InstalledItem::Config, path))
                 .collect();
 
         // Search for system map
         let system_maps: Vec<_> =
             dir_search::all_paths_with_prefix("System.map-", &self.install_search_path)?
                 .into_iter()
-                .map(|path| InstalledItem::SystemMap(path))
+                .map(|path| (InstalledItem::SystemMap, path))
                 .collect();
 
         // Search for source dir
         let source_dirs: Vec<_> =
             dir_search::all_paths_with_prefix("linux", &self.source_search_path)?
                 .into_iter()
-                .map(|path| InstalledItem::SourceDir(path))
+                .map(|path| (InstalledItem::SourceDir, path))
                 .collect();
 
         // Search for module path
         let module_dirs: Vec<_> = dir_search::all_paths(&self.module_search_path)?
             .into_iter()
-            .map(|path| InstalledItem::ModuleDir(path))
+            .map(|path| (InstalledItem::ModuleDir, path))
             .collect();
+
+        let all_items: Vec<(KernelVersion, InstalledItem, PathBuf)> = vec![
+            kernel_images,
+            configs,
+            system_maps,
+            source_dirs,
+            module_dirs,
+        ]
+        .into_iter()
+        .flatten()
+        // Grab the trimmed filename so it can be used to make a KernelVersion
+        .map(|(installed_item, pathbuf)| {
+            (
+                dir_search::filename_from_path(&pathbuf),
+                installed_item,
+                pathbuf,
+            )
+        })
+        // Turn the filename into a kernel version
+        .map(|(filename, installed_item, pathbuf)| {
+            (
+                KernelVersion::try_from(filename.unwrap_or_default()),
+                installed_item,
+                pathbuf,
+            )
+        })
+        // Report any errors and remove those invalid versions
+        .filter_map(|(version, installed_item, pathbuf)| match version {
+            Ok(v) => Some((v, installed_item, pathbuf)),
+            Err(_) => {
+                eprintln!("Could not parse {:?} as a KernelVersion", &pathbuf);
+                None
+            }
+        })
+        .collect();
 
         Ok(Vec::new())
     }
