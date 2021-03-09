@@ -9,7 +9,7 @@ use crate::dir_search;
 /// Format: SomeIgnoredValue-<major>.<minor>.<patch>-gentoo
 ///         or SomeIgnoredValue-<major>.<minor>.<patch>-rc<release_candidate_num>-gentoo
 ///         or SomeIgnoredValue-<major>.<minor>.<patch>-gentoo.old
-#[derive(Hash, Eq, Debug)]
+#[derive(Hash, Eq, Debug, Clone, Copy)]
 struct KernelVersion {
     major: u32,
     minor: u32,
@@ -61,6 +61,7 @@ impl KernelVersion {
         self.is_old
     }
 }
+
 impl TryFrom<&str> for KernelVersion {
     type Error = std::num::ParseIntError;
 
@@ -151,22 +152,36 @@ impl PartialEq for KernelVersion {
 }
 
 impl InstalledKernel {
-    pub fn new(
-        version: KernelVersion,
-        module_path: Option<PathBuf>,
-        vmlinuz_path: Option<PathBuf>,
-        source_path: Option<PathBuf>,
-        config_path: Option<PathBuf>,
-        system_map_path: Option<PathBuf>,
-    ) -> InstalledKernel {
+    pub fn new(version: KernelVersion) -> InstalledKernel {
         InstalledKernel {
             version,
-            module_path,
-            vmlinuz_path,
-            source_path,
-            config_path,
-            system_map_path,
+            module_path: None,
+            source_path: None,
+            vmlinuz_path: None,
+            config_path: None,
+            system_map_path: None,
         }
+    }
+
+    pub fn with_module_path(mut self, dir: PathBuf) -> InstalledKernel {
+        self.module_path = Some(dir);
+        self
+    }
+    pub fn with_vmlinuz_path(mut self, dir: PathBuf) -> InstalledKernel {
+        self.vmlinuz_path = Some(dir);
+        self
+    }
+    pub fn with_source_path(mut self, dir: PathBuf) -> InstalledKernel {
+        self.source_path = Some(dir);
+        self
+    }
+    pub fn with_config_path(mut self, dir: PathBuf) -> InstalledKernel {
+        self.config_path = Some(dir);
+        self
+    }
+    pub fn with_system_map_path(mut self, dir: PathBuf) -> InstalledKernel {
+        self.system_map_path = Some(dir);
+        self
     }
 
     /// True if any of the paths are empty (not found)
@@ -180,7 +195,7 @@ impl InstalledKernel {
     }
 }
 
-enum InstalledItem {
+enum InstalledItemKind {
     KernelImage,
     Config,
     SystemMap,
@@ -212,61 +227,45 @@ impl KernelSearch {
         self.install_search_path = dir;
         self
     }
-    fn add_item_to_map(
-        item: InstalledItem,
-        version: KernelVersion,
-        path: PathBuf,
-        map: &mut HashMap<KernelVersion, InstalledKernel>,
-    ) -> Result<(), &str> {
-        // - Check if that KernelVersion is already present as an InstalledKernel
-        //   - If it is, add the path to the InstalledKernel
-        //   - otherwise, create a new InstalledKernel with the pair
-        match item {
-            InstalledItem::SystemMap(pathbuf) => {}
-            InstalledItem::KernelImage(p) => {}
-            InstalledItem::Config(p) => {}
-            InstalledItem::SourceDir(p) => {}
-            InstalledItem::ModuleDir(p) => {}
-        }
-        Ok(())
-    }
-    pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
-        // TODO Make all of these into a list
+
+    fn find_all_installed_items(
+        &self,
+    ) -> io::Result<Vec<(KernelVersion, InstalledItemKind, PathBuf)>> {
         // Search for vmlinuz
         let kernel_images: Vec<_> =
             dir_search::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?
                 .into_iter()
-                .map(|path| (InstalledItem::KernelImage, path))
+                .map(|path| (InstalledItemKind::KernelImage, path))
                 .collect();
 
         // Search for config
         let configs: Vec<_> =
             dir_search::all_paths_with_prefix("config-", &self.install_search_path)?
                 .into_iter()
-                .map(|path| (InstalledItem::Config, path))
+                .map(|path| (InstalledItemKind::Config, path))
                 .collect();
 
         // Search for system map
         let system_maps: Vec<_> =
             dir_search::all_paths_with_prefix("System.map-", &self.install_search_path)?
                 .into_iter()
-                .map(|path| (InstalledItem::SystemMap, path))
+                .map(|path| (InstalledItemKind::SystemMap, path))
                 .collect();
 
         // Search for source dir
         let source_dirs: Vec<_> =
             dir_search::all_paths_with_prefix("linux", &self.source_search_path)?
                 .into_iter()
-                .map(|path| (InstalledItem::SourceDir, path))
+                .map(|path| (InstalledItemKind::SourceDir, path))
                 .collect();
 
         // Search for module path
         let module_dirs: Vec<_> = dir_search::all_paths(&self.module_search_path)?
             .into_iter()
-            .map(|path| (InstalledItem::ModuleDir, path))
+            .map(|path| (InstalledItemKind::ModuleDir, path))
             .collect();
 
-        let all_items: Vec<(KernelVersion, InstalledItem, PathBuf)> = vec![
+        let all_items: Vec<(KernelVersion, InstalledItemKind, PathBuf)> = vec![
             kernel_images,
             configs,
             system_maps,
@@ -275,24 +274,24 @@ impl KernelSearch {
         ]
         .into_iter()
         .flatten()
-        // Grab the trimmed filename so it can be used to make a KernelVersion
         .map(|(installed_item, pathbuf)| {
+            // Grab the trimmed filename so it can be used to make a KernelVersion
             (
                 dir_search::filename_from_path(&pathbuf),
                 installed_item,
                 pathbuf,
             )
         })
-        // Turn the filename into a kernel version
         .map(|(filename, installed_item, pathbuf)| {
+            // Turn the filename into a kernel version
             (
                 KernelVersion::try_from(filename.unwrap_or_default()),
                 installed_item,
                 pathbuf,
             )
         })
-        // Report any errors and remove those invalid versions
         .filter_map(|(version, installed_item, pathbuf)| match version {
+            // Report any errors and remove those invalid versions
             Ok(v) => Some((v, installed_item, pathbuf)),
             Err(_) => {
                 eprintln!("Could not parse {:?} as a KernelVersion", &pathbuf);
@@ -300,6 +299,95 @@ impl KernelSearch {
             }
         })
         .collect();
+
+        Ok(all_items)
+    }
+
+    fn collect_items_in_map(
+        items: Vec<(KernelVersion, InstalledItemKind, PathBuf)>,
+    ) -> HashMap<KernelVersion, InstalledKernel> {
+        let mut version_map: HashMap<KernelVersion, InstalledKernel> = HashMap::new();
+        // - Check if that KernelVersion is already present as an InstalledKernel
+        //   - If it is, add the path to the InstalledKernel
+        //   - otherwise, create a new InstalledKernel with the pair
+        for (version, kind, path) in items {
+            match kind {
+                InstalledItemKind::KernelImage => {
+                    let old_path = version_map
+                        .entry(version)
+                        .or_insert(InstalledKernel::new(version))
+                        .vmlinuz_path
+                        .replace(path);
+                    if old_path.is_some() {
+                        eprintln!(
+                            "Overwriting previously present kernel image  {:?} for version {:?}",
+                            old_path, version
+                        );
+                    }
+                }
+                InstalledItemKind::Config => {
+                    let old_path = version_map
+                        .entry(version)
+                        .or_insert(InstalledKernel::new(version))
+                        .config_path
+                        .replace(path);
+                    if old_path.is_some() {
+                        eprintln!(
+                            "Overwriting previously present config {:?} for version {:?}",
+                            old_path, version
+                        );
+                    }
+                }
+                InstalledItemKind::SystemMap => {
+                    let old_path = version_map
+                        .entry(version)
+                        .or_insert(InstalledKernel::new(version))
+                        .system_map_path
+                        .replace(path);
+                    if old_path.is_some() {
+                        eprintln!(
+                            "Overwriting previously present system map {:?} for version {:?}",
+                            old_path, version
+                        );
+                    }
+                }
+
+                InstalledItemKind::SourceDir => {
+                    let old_path = version_map
+                        .entry(version)
+                        .or_insert(InstalledKernel::new(version))
+                        .source_path
+                        .replace(path);
+                    if old_path.is_some() {
+                        eprintln!(
+                            "Overwriting previously present source path {:?} for version {:?}",
+                            old_path, version
+                        );
+                    }
+                }
+                InstalledItemKind::ModuleDir => {
+                    let old_path = version_map
+                        .entry(version)
+                        .or_insert(InstalledKernel::new(version))
+                        .module_path
+                        .replace(path);
+                    if old_path.is_some() {
+                        eprintln!(
+                            "Overwriting previously present module path {:?} for version {:?}",
+                            old_path, version
+                        );
+                    }
+                }
+            }
+        }
+
+        version_map
+    }
+
+    pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
+        let installed_items = self.find_all_installed_items()?;
+
+        let version_map = KernelSearch::collect_items_in_map(installed_items);
 
         Ok(Vec::new())
     }
@@ -431,29 +519,23 @@ mod tests {
 
     #[test]
     fn files_missing_true() {
+        let temp_path = PathBuf::from("./temp");
         let version = KernelVersion::new(2, 6, 0, None, false);
-        let installed_kernel = InstalledKernel::new(
-            version,
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-            None,
-        );
+        // Only one value is given
+        let installed_kernel = InstalledKernel::new(version).with_config_path(temp_path.clone());
         assert_eq!(installed_kernel.files_missing(), true);
     }
 
     #[test]
     fn files_missing_false() {
+        let temp_path = PathBuf::from("./temp");
         let version = KernelVersion::new(2, 6, 0, None, false);
-        let installed_kernel = InstalledKernel::new(
-            version,
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-            Some(PathBuf::from("./temp")),
-        );
+        let installed_kernel = InstalledKernel::new(version)
+            .with_config_path(temp_path.clone())
+            .with_module_path(temp_path.clone())
+            .with_system_map_path(temp_path.clone())
+            .with_vmlinuz_path(temp_path.clone())
+            .with_source_path(temp_path.clone());
         assert_eq!(installed_kernel.files_missing(), false);
     }
 }

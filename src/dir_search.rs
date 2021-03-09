@@ -106,7 +106,7 @@ mod tests {
     fn test_filename_from_path() {
         let path = Path::new("/tmp/some/path/a-filename.txt");
         let filename = filename_from_path(path);
-        assert!(filename.is_ok());
+        assert!(filename.is_some());
         let filename = filename.unwrap();
         assert_eq!(filename.as_str(), "a-filename.txt");
     }
