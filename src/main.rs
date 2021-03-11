@@ -1,3 +1,4 @@
+mod cli;
 mod dir_search;
 mod kernel;
 fn main() {
