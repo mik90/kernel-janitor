@@ -303,15 +303,15 @@ impl KernelSearch {
         Ok(all_items)
     }
 
-    fn collect_items_in_map(
+    fn fold_all_to_installed_kernels(
         items: Vec<(KernelVersion, InstalledItemKind, PathBuf)>,
-    ) -> HashMap<KernelVersion, InstalledKernel> {
+    ) -> Vec<InstalledKernel> {
         let mut version_map: HashMap<KernelVersion, InstalledKernel> = HashMap::new();
         // - Check if that KernelVersion is already present as an InstalledKernel
         //   - If it is, add the path to the InstalledKernel
         //   - otherwise, create a new InstalledKernel with the pair
-        for (version, kind, path) in items {
-            match kind {
+        for (version, item_kind, path) in items {
+            match item_kind {
                 InstalledItemKind::KernelImage => {
                     let old_path = version_map
                         .entry(version)
@@ -382,14 +382,18 @@ impl KernelSearch {
         }
 
         version_map
+            .into_iter()
+            .map(|(_, installed_kernel)| installed_kernel)
+            .collect()
     }
 
-    pub fn run(&self) -> io::Result<Vec<InstalledKernel>> {
-        let installed_items = self.find_all_installed_items()?;
+    /// Actually run the search and return all of the found InstalledKernels
+    pub fn execute(&self) -> io::Result<Vec<InstalledKernel>> {
+        let all_installed_items = self.find_all_installed_items()?;
 
-        let version_map = KernelSearch::collect_items_in_map(installed_items);
+        let installed_kernels = KernelSearch::fold_all_to_installed_kernels(all_installed_items);
 
-        Ok(Vec::new())
+        Ok(installed_kernels)
     }
 }
 #[cfg(test)]
