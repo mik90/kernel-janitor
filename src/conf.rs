@@ -1,5 +1,6 @@
 use std::{error::Error, fmt};
 
+#[derive(Debug)]
 struct Entry {
     pub name: String,
     pub value: String,
@@ -9,12 +10,21 @@ struct ConfigFile {
     entries: Vec<Entry>,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 /// ParseError(String) contains the line that failed to parse
 /// A comment can just be ignored
 enum ConfigError {
     ParseError(String),
     Comment,
+}
+
+impl ConfigError {
+    fn is_parse_error(&self) -> bool {
+        match self {
+            ConfigError::ParseError(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for ConfigError {
@@ -122,5 +132,52 @@ mod tests {
         let entry = entry.unwrap();
         assert_eq!(entry.name, "entry_name");
         assert_eq!(entry.value, "value2");
+    }
+    #[test]
+    fn parse_conf_file() {
+        let lines = vec![
+            "# Hello",
+            " #With space",
+            "entry_0 =   value_0 # Some Comment",
+            "entry_1 = value_1",
+            "entry_2 = value_2#Comment",
+            "entry_3=value_3",
+            " entry_4= value_4",
+        ];
+        let (entries, errors): (Vec<_>, Vec<_>) = lines
+            .into_iter()
+            .map(|line| Entry::new(line))
+            .partition(|entry| entry.is_ok());
+
+        let errors: Vec<_> = errors
+            .into_iter()
+            .map(Result::unwrap_err)
+            .filter(|e| e.is_parse_error())
+            .collect();
+
+        errors.iter().for_each(|e| match e {
+            ConfigError::ParseError(e) => {
+                eprintln!("{}", e);
+            }
+            _ => (),
+        });
+
+        let entries: Vec<_> = entries.into_iter().map(Result::unwrap).collect();
+
+        assert!(errors.is_empty());
+        assert_eq!(entries[0].name, "entry_0");
+        assert_eq!(entries[0].value, "value_0");
+
+        assert_eq!(entries[1].name, "entry_1");
+        assert_eq!(entries[1].value, "value_1");
+
+        assert_eq!(entries[2].name, "entry_2");
+        assert_eq!(entries[2].value, "value_2");
+
+        assert_eq!(entries[3].name, "entry_3");
+        assert_eq!(entries[3].value, "value_3");
+
+        assert_eq!(entries[4].name, "entry_4");
+        assert_eq!(entries[4].value, "value_4");
     }
 }
