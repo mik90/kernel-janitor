@@ -16,12 +16,16 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] print out help
     - [x] tested
 * [ ] Parse config files
-    * [x] impl ini parsing without sections
+    * [ ] impl ini parsing without sections
+        * [x] Parse entry
+        * [ ] Parse file
     * [x] ignore comments
-    * [ ] Allow hooks that can be ran after building the kernel
-        - Used for running `emerge @preserved-rebuild`
+    - [ ] search for config files
+    - [ ] search for config files
     - [ ] tested
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
+* [ ] Allow hooks that can be ran after building the kernel
+    - Used for running `emerge @preserved-rebuild`
 * [ ] Allow for a `keep` flag on `InstalledKernel`s so that certain kernels won't be removed
     - [ ] tested

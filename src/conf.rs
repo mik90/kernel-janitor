@@ -1,28 +1,40 @@
-use std::{error::Error, fmt};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug)]
-struct Entry {
+pub struct Entry {
     pub name: String,
     pub value: String,
 }
 /// .ini style config file but without sections
-struct ConfigFile {
+pub struct ConfigFile {
     entries: Vec<Entry>,
 }
 
-#[derive(PartialEq, Debug)]
 /// ParseError(String) contains the line that failed to parse
-/// A comment can just be ignored
-enum ConfigError {
+/// A comment can just be ignored, it probably shouldn't be in the ConfigError enum
+#[derive(PartialEq, Debug)]
+pub enum ConfigError {
     ParseError(String),
+    IoError(std::io::Error),
     Comment,
 }
 
+pub fn find_conf_files() -> Vec<ConfigFile> {
+    let paths = vec![
+        PathBuf::from("./kernel-janitor.conf"),
+        PathBuf::from("~/.config/kernel-janitor.conf"),
+    ];
+    Vec::new()
+}
+
 impl ConfigError {
-    fn is_parse_error(&self) -> bool {
+    fn is_not_comment(&self) -> bool {
         match self {
-            ConfigError::ParseError(_) => true,
-            _ => false,
+            ConfigError::Comment => false,
+            _ => true,
         }
     }
 }
@@ -34,6 +46,9 @@ impl fmt::Display for ConfigError {
                 write!(f, "Could not parse config line \"{}\"", e)
             }
             ConfigError::Comment => Ok(()),
+            ConfigError::IoError(e) => {
+                write!(f, "Received io::Error \"{}\"", e)
+            }
         }
     }
 }
@@ -78,6 +93,31 @@ impl Entry {
             name: name.to_string(),
             value: value.to_string(),
         })
+    }
+}
+
+impl ConfigFile {
+    pub fn read(path: &Path) -> Result<ConfigFile, ConfigError> {
+        let contents = std::fs::read(path);
+        if contents.is_err() {
+            return Err(ConfigError::IoError(contents.unwrap_err()));
+        }
+        let contents = contents.unwrap();
+
+        let file_str = String::from_utf8_lossy(&contents);
+        let lines = file_str.lines();
+        let (entries): Result<Vec<_>, _>) = lines
+            .into_iter()
+            .map(|l| Entry::new(l))
+            .partition(Result::is_ok);
+
+        // Strip comment 'errors', not really the cleanest
+        let errors: Vec<ConfigError> = errors
+            .into_iter()
+            .map(Result::unwrap_err)
+            .filter(|e| e.is_not_comment())
+            .collect();
+        let entries: Vec<Entry> = entries.into_iter().map(Result::unwrap).collect();
     }
 }
 
@@ -152,7 +192,7 @@ mod tests {
         let errors: Vec<_> = errors
             .into_iter()
             .map(Result::unwrap_err)
-            .filter(|e| e.is_parse_error())
+            .filter(|e| e.is_not_comment())
             .collect();
 
         errors.iter().for_each(|e| match e {
