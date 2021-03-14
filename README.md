@@ -16,8 +16,8 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] print out help
     - [x] tested
 * [ ] Parse config files
-    * [ ] impl `Into` for ConfigError
-    * [ ] impl ini parsing
+    * [x] impl ini parsing without sections
+    * [x] ignore comments
     * [ ] Allow hooks that can be ran after building the kernel
         - Used for running `emerge @preserved-rebuild`
     - [ ] tested
