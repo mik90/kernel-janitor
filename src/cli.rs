@@ -13,12 +13,12 @@ struct Flag {
 
 /// The parser should return a HashSet that contains the list of found flags
 /// The HashSet will be indexed by the `Flag::name` member
-struct FlagParser {
+pub struct FlagParser {
     flags: Vec<Flag>,
     found_flags: HashSet<FlagName>,
 }
 
-struct ParseResults {
+pub struct ParseResults {
     help_message: String,
     found_flags: HashSet<FlagName>,
 }
@@ -86,6 +86,11 @@ impl FlagParser {
             })
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    pub fn parse_args_from_env(mut self) -> ParseResults {
+        let args = std::env::args().collect::<Vec<_>>();
+        self.parse_args(args)
     }
 
     /// Returns a HashSet of the enabled flag names
