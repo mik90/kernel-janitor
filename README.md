@@ -12,6 +12,8 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] use builder pattern to create configurable search
     - [ ] tested
 * [ ] Parse command line input (In progress)
+    - [x] handle flags
+    - [x] print out help
     - [ ] tested
 * [ ] Parse config files
     * [ ] Allow hooks that can be ran after building the kernel
