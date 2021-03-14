@@ -1,6 +1,10 @@
 mod cli;
+mod conf;
 mod dir_search;
 mod kernel;
+
+const EXIT_SUCCESS: i32 = 0;
+const EXIT_ERROR: i32 = 1;
 fn main() {
     let parsed_results = cli::FlagParser::new()
         .with_flag(
@@ -24,6 +28,11 @@ fn main() {
         )
         .parse_args_from_env();
 
+    if parsed_results.flag_enabled("help") {
+        println!("{}", parsed_results.help_message());
+        std::process::exit(EXIT_SUCCESS);
+    }
+
     if parsed_results.flag_enabled("manual_edit") {
         println!("manual edit enabled");
     }
@@ -32,9 +41,5 @@ fn main() {
     }
     if parsed_results.flag_enabled("list") {
         println!("list enabled");
-    }
-
-    if parsed_results.flag_enabled("help") {
-        println!("{}", parsed_results.help_message());
     }
 }

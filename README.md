@@ -14,8 +14,10 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
 * [ ] Parse command line input (In progress)
     - [x] handle flags
     - [x] print out help
-    - [ ] tested
+    - [x] tested
 * [ ] Parse config files
+    * [ ] impl `Into` for ConfigError
+    * [ ] impl ini parsing
     * [ ] Allow hooks that can be ran after building the kernel
         - Used for running `emerge @preserved-rebuild`
     - [ ] tested
