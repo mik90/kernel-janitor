@@ -16,14 +16,15 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] print out help
     - [x] tested
 * [ ] Parse config files
-    * [ ] impl ini parsing without sections
-        * [x] Parse entry
-        * [ ] Parse file
-    - [ ] Use EntryKind to allow parse error, comment, entry
-    * [x] ignore comments
+    - [x] impl ini parsing
+    - [x] Parse entry
+    - ~~[ ] Parse section~~
+        - not really needed
+    - [x] Parse file
+    - [x] Use enum to allow parse error, comment, entry
+    - [x] ignore comments
     - [ ] search for config files
-    - [ ] search for config files
-    - [ ] tested
+    - [x] tested
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
 * [ ] Allow hooks that can be ran after building the kernel

@@ -3,9 +3,15 @@ mod conf;
 mod dir_search;
 mod kernel;
 
-const EXIT_SUCCESS: i32 = 0;
-const EXIT_ERROR: i32 = 1;
 fn main() {
+    if let Err(err) = try_main() {
+        eprintln!("{}", err);
+        std::process::exit(1);
+    }
+}
+
+// Got the idea for `try_main` from https://github.com/benhoyt/countwords/blob/8553c8f600c40a4626e966bc7e7e804097e6e2f4/rust/simple/main.rs
+fn try_main() -> Result<(), Box<dyn std::error::Error>> {
     let parsed_results = cli::FlagParser::new()
         .with_flag(
             "manual_edit",
@@ -30,7 +36,7 @@ fn main() {
 
     if parsed_results.flag_enabled("help") {
         println!("{}", parsed_results.help_message());
-        std::process::exit(EXIT_SUCCESS);
+        return Ok(());
     }
 
     if parsed_results.flag_enabled("manual_edit") {
@@ -42,4 +48,6 @@ fn main() {
     if parsed_results.flag_enabled("list") {
         println!("list enabled");
     }
+
+    Ok(())
 }

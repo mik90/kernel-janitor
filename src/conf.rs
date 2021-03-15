@@ -1,56 +1,33 @@
 use std::{
-    fmt,
+    collections::{hash_map::Entry, HashMap},
     path::{Path, PathBuf},
 };
 
-#[derive(Debug)]
-pub struct Entry {
+#[derive(PartialEq, Debug)]
+pub struct ConfigEntry {
     pub name: String,
     pub value: String,
 }
-/// .ini style config file but without sections
-pub struct ConfigFile {
-    entries: Vec<Entry>,
-}
-
-/// ParseError(String) contains the line that failed to parse
-/// A comment can just be ignored, it probably shouldn't be in the ConfigError enum
+// A single line in a config file can be multiple things
 #[derive(PartialEq, Debug)]
-pub enum ConfigError {
-    ParseError(String),
-    IoError(std::io::Error),
+pub enum ConfigLineKind {
+    Entry(ConfigEntry),
+    Section(String),
     Comment,
+    ParseError(String),
 }
 
-pub fn find_conf_files() -> Vec<ConfigFile> {
+type EntryName = String;
+pub struct Config {
+    entries: HashMap<EntryName, ConfigEntry>,
+}
+
+pub fn find_conf_files() -> Vec<Config> {
     let paths = vec![
         PathBuf::from("./kernel-janitor.conf"),
         PathBuf::from("~/.config/kernel-janitor.conf"),
     ];
     Vec::new()
-}
-
-impl ConfigError {
-    fn is_not_comment(&self) -> bool {
-        match self {
-            ConfigError::Comment => false,
-            _ => true,
-        }
-    }
-}
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ConfigError::ParseError(e) => {
-                write!(f, "Could not parse config line \"{}\"", e)
-            }
-            ConfigError::Comment => Ok(()),
-            ConfigError::IoError(e) => {
-                write!(f, "Received io::Error \"{}\"", e)
-            }
-        }
-    }
 }
 
 fn strip_comment(text: &str) -> &str {
@@ -67,57 +44,94 @@ fn strip_comment(text: &str) -> &str {
     }
 }
 
-impl Entry {
+impl ConfigLineKind {
+    pub fn parse(line: &str) -> ConfigLineKind {
+        if strip_comment(line).is_empty() {
+            return ConfigLineKind::Comment;
+        }
+        let line = line.trim();
+        if line.starts_with('[') && line.ends_with(']') {
+            return ConfigLineKind::Section(
+                line.trim_start_matches('[')
+                    .trim_end_matches(']')
+                    .to_string(),
+            );
+        }
+
+        // If not a Comment or Section title, try to parse as an entry
+        match ConfigEntry::new(line) {
+            Some(e) => ConfigLineKind::Entry(e),
+            None => ConfigLineKind::ParseError(line.to_string()),
+        }
+    }
+}
+
+impl ConfigEntry {
     /// Parse `some_entry_name = some_entry_value` to grab the
     /// name and the value as a string
-    pub fn new(line: &str) -> Result<Entry, ConfigError> {
-        if strip_comment(line).is_empty() {
-            // Early return if the entire line is a comment
-            return Err(ConfigError::Comment);
-        }
-        let equals_idx = line
-            .find('=')
-            .ok_or(ConfigError::ParseError(line.to_string()))?;
+    pub fn new(line: &str) -> Option<ConfigEntry> {
+        let equals_idx = line.find('=')?;
         let (name, value) = line.split_at(equals_idx);
-
         let name = name.trim();
+
         // The line starts with a '=' which needs to be trimmed before the whitespace
-        let value = value
-            .strip_prefix('=')
-            .ok_or(ConfigError::ParseError(line.to_string()))?;
+        // It'll definitely be there since it was found, otherwise just default to empty
+        let value = value.strip_prefix('=')?;
+
         if value.is_empty() {
-            return Err(ConfigError::ParseError(line.to_string()));
+            // Coulnd't find a value assignedto the name :(
+            return None;
         }
         let value = strip_comment(value).trim();
-        Ok(Entry {
+        Some(ConfigEntry {
             name: name.to_string(),
             value: value.to_string(),
         })
     }
 }
 
-impl ConfigFile {
-    pub fn read(path: &Path) -> Result<ConfigFile, ConfigError> {
-        let contents = std::fs::read(path);
-        if contents.is_err() {
-            return Err(ConfigError::IoError(contents.unwrap_err()));
-        }
-        let contents = contents.unwrap();
+impl Config {
+    pub fn read(path: &Path) -> Result<Config, std::io::Error> {
+        let contents = std::fs::read(path)?;
 
         let file_str = String::from_utf8_lossy(&contents);
         let lines = file_str.lines();
-        let (entries): Result<Vec<_>, _>) = lines
-            .into_iter()
-            .map(|l| Entry::new(l))
-            .partition(Result::is_ok);
 
-        // Strip comment 'errors', not really the cleanest
-        let errors: Vec<ConfigError> = errors
-            .into_iter()
-            .map(Result::unwrap_err)
-            .filter(|e| e.is_not_comment())
-            .collect();
-        let entries: Vec<Entry> = entries.into_iter().map(Result::unwrap).collect();
+        let mut entries = HashMap::<EntryName, ConfigEntry>::new();
+        for line in lines {
+            match ConfigLineKind::parse(line) {
+                ConfigLineKind::Section(_) => (), // Ignore sections for now
+                ConfigLineKind::Entry(e) => {
+                    entries.insert(e.name.clone(), e);
+                    ()
+                }
+                ConfigLineKind::ParseError(e) => {
+                    return Err(std::io::Error::new(std::io::ErrorKind::Other, e))
+                }
+                ConfigLineKind::Comment => (),
+            }
+        }
+        Ok(Config { entries })
+    }
+
+    // TODO use generics but they must be restricted
+    pub fn get_u32(&self, name: &str) -> Option<u32> {
+        match self.entries.get(name) {
+            Some(e) => e.value.parse::<u32>().ok(),
+            None => None,
+        }
+    }
+    pub fn get_bool(&self, name: &str) -> Option<bool> {
+        match self.entries.get(name) {
+            Some(e) => e.value.parse::<bool>().ok(),
+            None => None,
+        }
+    }
+    pub fn get_path(&self, name: &str) -> Option<PathBuf> {
+        match self.entries.get(name) {
+            Some(e) => Some(PathBuf::from(e.value.clone())),
+            None => None,
+        }
     }
 }
 
@@ -127,9 +141,9 @@ mod tests {
     #[test]
     fn parse_entry() {
         let line = "entry_name      =      5";
-        let entry = Entry::new(line);
+        let entry = ConfigEntry::new(line);
 
-        assert!(entry.is_ok());
+        assert!(entry.is_some());
         let entry = entry.unwrap();
         assert_eq!(entry.name, "entry_name");
         assert_eq!(entry.value, "5");
@@ -138,17 +152,17 @@ mod tests {
     #[test]
     fn ignore_comment() {
         let line = "#Some Comment";
-        let entry = Entry::new(line);
+        let entry = ConfigEntry::new(line);
 
-        assert!(entry.is_err());
+        assert!(entry.is_none());
     }
 
     #[test]
     fn ignore_comment_after_value_0() {
         let line = "entry_name      =   value  # Some Comment";
-        let entry = Entry::new(line);
+        let entry = ConfigEntry::new(line);
 
-        assert!(entry.is_ok());
+        assert!(entry.is_some());
         let entry = entry.unwrap();
         assert_eq!(entry.name, "entry_name");
         assert_eq!(entry.value, "value");
@@ -156,9 +170,9 @@ mod tests {
     #[test]
     fn ignore_comment_after_value_1() {
         let line = "entry_name =   value2# Some Comment";
-        let entry = Entry::new(line);
+        let entry = ConfigEntry::new(line);
 
-        assert!(entry.is_ok());
+        assert!(entry.is_some());
         let entry = entry.unwrap();
         assert_eq!(entry.name, "entry_name");
         assert_eq!(entry.value, "value2");
@@ -166,58 +180,34 @@ mod tests {
     #[test]
     fn ignore_comment_after_value_2() {
         let line = "entry_name=   value2# Some Comment";
-        let entry = Entry::new(line);
+        let entry = ConfigEntry::new(line);
 
-        assert!(entry.is_ok());
+        assert!(entry.is_some());
         let entry = entry.unwrap();
         assert_eq!(entry.name, "entry_name");
         assert_eq!(entry.value, "value2");
     }
+
     #[test]
     fn parse_conf_file() {
-        let lines = vec![
-            "# Hello",
-            " #With space",
-            "entry_0 =   value_0 # Some Comment",
-            "entry_1 = value_1",
-            "entry_2 = value_2#Comment",
-            "entry_3=value_3",
-            " entry_4= value_4",
-        ];
-        let (entries, errors): (Vec<_>, Vec<_>) = lines
-            .into_iter()
-            .map(|line| Entry::new(line))
-            .partition(|entry| entry.is_ok());
+        let example_conf = PathBuf::from("kernel-janitor-example.conf");
+        let conf = Config::read(&example_conf);
+        assert!(conf.is_ok());
+        let conf = conf.unwrap();
 
-        let errors: Vec<_> = errors
-            .into_iter()
-            .map(Result::unwrap_err)
-            .filter(|e| e.is_not_comment())
-            .collect();
+        let path_value = conf.get_path("InstallPath");
+        println!("{:?}", path_value);
+        assert!(path_value.is_some());
+        assert_eq!(path_value.unwrap(), PathBuf::from("/boot/EFI/Gentoo"));
 
-        errors.iter().for_each(|e| match e {
-            ConfigError::ParseError(e) => {
-                eprintln!("{}", e);
-            }
-            _ => (),
-        });
+        let u32_value = conf.get_u32("VersionsToKeep");
+        println!("{:?}", u32_value);
+        assert!(u32_value.is_some());
+        assert_eq!(u32_value.unwrap(), 3 as u32);
 
-        let entries: Vec<_> = entries.into_iter().map(Result::unwrap).collect();
-
-        assert!(errors.is_empty());
-        assert_eq!(entries[0].name, "entry_0");
-        assert_eq!(entries[0].value, "value_0");
-
-        assert_eq!(entries[1].name, "entry_1");
-        assert_eq!(entries[1].value, "value_1");
-
-        assert_eq!(entries[2].name, "entry_2");
-        assert_eq!(entries[2].value, "value_2");
-
-        assert_eq!(entries[3].name, "entry_3");
-        assert_eq!(entries[3].value, "value_3");
-
-        assert_eq!(entries[4].name, "entry_4");
-        assert_eq!(entries[4].value, "value_4");
+        let bool_value = conf.get_bool("RegenerateGrubConfig");
+        println!("{:?}", bool_value);
+        assert!(bool_value.is_some());
+        assert_eq!(bool_value.unwrap(), false);
     }
 }
