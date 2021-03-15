@@ -19,6 +19,7 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     * [ ] impl ini parsing without sections
         * [x] Parse entry
         * [ ] Parse file
+    - [ ] Use EntryKind to allow parse error, comment, entry
     * [x] ignore comments
     - [ ] search for config files
     - [ ] search for config files
@@ -29,3 +30,5 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - Used for running `emerge @preserved-rebuild`
 * [ ] Allow for a `keep` flag on `InstalledKernel`s so that certain kernels won't be removed
     - [ ] tested
+* [ ] Use `try_main`
+    - reference `https://benhoyt.com/writings/count-words/`
