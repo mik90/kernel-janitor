@@ -25,6 +25,7 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] ignore comments
     - [x] search for config files
     - [x] tested
+* [ ] Handle parsing version from module names which won't have 'linux-' prepended
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
 * [ ] Allow hooks that can be ran after building the kernel
