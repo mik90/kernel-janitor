@@ -15,7 +15,7 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] handle flags
     - [x] print out help
     - [x] tested
-* [ ] Parse config files
+* [x] Parse config files
     - [x] impl ini parsing
     - [x] Parse entry
     - ~~[ ] Parse section~~
@@ -23,7 +23,7 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] Parse file
     - [x] Use enum to allow parse error, comment, entry
     - [x] ignore comments
-    - [ ] search for config files
+    - [x] search for config files
     - [x] tested
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested

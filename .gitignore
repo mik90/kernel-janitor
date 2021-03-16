@@ -14,3 +14,6 @@ build_kernel/
 
 # test folder
 unit-test-temp/
+
+# Local config file
+kernel-janitor.conf

@@ -1,5 +1,5 @@
 use std::{
-    borrow::Borrow, cmp::Ordering, collections::HashMap, convert::TryFrom, io, option::Option,
+    borrow::Borrow, cmp::Ordering, collections::HashMap, convert::TryFrom, fmt, io, option::Option,
     path::Path, path::PathBuf,
 };
 
@@ -10,14 +10,22 @@ use crate::dir_search;
 ///         or SomeIgnoredValue-<major>.<minor>.<patch>-rc<release_candidate_num>-gentoo
 ///         or SomeIgnoredValue-<major>.<minor>.<patch>-gentoo.old
 #[derive(Hash, Eq, Debug, Clone, Copy)]
-struct KernelVersion {
+pub struct KernelVersion {
     major: u32,
     minor: u32,
     patch: u32,
     release_candidate_num: Option<u32>,
     is_old: bool,
 }
-struct InstalledKernel {
+enum InstalledItemKind {
+    KernelImage,
+    Config,
+    SystemMap,
+    SourceDir,
+    ModuleDir,
+}
+
+pub struct InstalledKernel {
     pub version: KernelVersion,
     pub module_path: Option<PathBuf>,
     pub source_path: Option<PathBuf>,
@@ -26,7 +34,7 @@ struct InstalledKernel {
     pub system_map_path: Option<PathBuf>,
 }
 
-struct KernelSearch {
+pub struct KernelSearch {
     module_search_path: PathBuf,
     source_search_path: PathBuf,
     // Expect to find vmlinuz, config, and system map in this search path
@@ -150,6 +158,19 @@ impl PartialEq for KernelVersion {
             && self.release_candidate_num.unwrap_or(0) == other.release_candidate_num.unwrap_or(0)
     }
 }
+impl fmt::Display for KernelVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut postfix = String::new();
+        if let Some(n) = self.release_candidate_num {
+            postfix.push_str("-rc");
+            postfix.push_str(&n.to_string());
+        }
+        if self.is_old {
+            postfix.push_str(".old");
+        }
+        write!(f, "{}.{}.{}{}", self.major, self.minor, self.patch, postfix)
+    }
+}
 
 impl InstalledKernel {
     pub fn new(version: KernelVersion) -> InstalledKernel {
@@ -194,13 +215,21 @@ impl InstalledKernel {
             || self.system_map_path.is_none()
     }
 }
-
-enum InstalledItemKind {
-    KernelImage,
-    Config,
-    SystemMap,
-    SourceDir,
-    ModuleDir,
+impl fmt::Display for InstalledKernel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Version: {}, \n
+               Binary path: {:?}, Config path: {:?}, System map path: {:?},\n
+               Source dir: {:?}, Module dir: {:?}",
+            self.version,
+            self.vmlinuz_path,
+            self.config_path,
+            self.system_map_path,
+            self.source_path,
+            self.module_path
+        )
+    }
 }
 
 impl KernelSearch {

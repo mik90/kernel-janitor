@@ -1,5 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
+    error,
     path::{Path, PathBuf},
 };
 
@@ -20,14 +21,6 @@ pub enum ConfigLineKind {
 type EntryName = String;
 pub struct Config {
     entries: HashMap<EntryName, ConfigEntry>,
-}
-
-pub fn find_conf_files() -> Vec<Config> {
-    let paths = vec![
-        PathBuf::from("./kernel-janitor.conf"),
-        PathBuf::from("~/.config/kernel-janitor.conf"),
-    ];
-    Vec::new()
 }
 
 fn strip_comment(text: &str) -> &str {
@@ -91,7 +84,7 @@ impl ConfigEntry {
 }
 
 impl Config {
-    pub fn read(path: &Path) -> Result<Config, std::io::Error> {
+    pub fn new(path: &Path) -> Result<Config, std::io::Error> {
         let contents = std::fs::read(path)?;
 
         let file_str = String::from_utf8_lossy(&contents);
@@ -114,23 +107,42 @@ impl Config {
         Ok(Config { entries })
     }
 
+    pub fn find_in_fs() -> Result<Config, std::io::Error> {
+        let close_conf = PathBuf::from("./kernel-janitor.conf");
+        if close_conf.exists() {
+            return Config::new(&close_conf);
+        }
+        let config_home_conf = PathBuf::from("~/.config/kernel-janitor.conf");
+        if config_home_conf.exists() {
+            return Config::new(&config_home_conf);
+        }
+
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "No config files found at {:?} or {:?}",
+                close_conf, config_home_conf
+            ),
+        ))
+    }
+
     // TODO use generics but they must be restricted
-    pub fn get_u32(&self, name: &str) -> Option<u32> {
+    pub fn get_u32(&self, name: &str) -> Result<u32, Box<dyn error::Error>> {
         match self.entries.get(name) {
-            Some(e) => e.value.parse::<u32>().ok(),
-            None => None,
+            Some(e) => e.value.parse::<u32>().map_err(|e| e.into()),
+            None => Err(format!("Config value with name {} was not found!", name).into()),
         }
     }
-    pub fn get_bool(&self, name: &str) -> Option<bool> {
+    pub fn get_bool(&self, name: &str) -> Result<bool, Box<dyn error::Error>> {
         match self.entries.get(name) {
-            Some(e) => e.value.parse::<bool>().ok(),
-            None => None,
+            Some(e) => e.value.parse::<bool>().map_err(|e| e.into()),
+            None => Err(format!("Config value with name {} was not found!", name).into()),
         }
     }
-    pub fn get_path(&self, name: &str) -> Option<PathBuf> {
+    pub fn get_path(&self, name: &str) -> Result<PathBuf, Box<dyn error::Error>> {
         match self.entries.get(name) {
-            Some(e) => Some(PathBuf::from(e.value.clone())),
-            None => None,
+            Some(e) => Ok(PathBuf::from(e.value.clone())),
+            None => Err(format!("Config value with name {} was not found!", name).into()),
         }
     }
 }
@@ -191,23 +203,23 @@ mod tests {
     #[test]
     fn parse_conf_file() {
         let example_conf = PathBuf::from("kernel-janitor-example.conf");
-        let conf = Config::read(&example_conf);
+        let conf = Config::new(&example_conf);
         assert!(conf.is_ok());
         let conf = conf.unwrap();
 
         let path_value = conf.get_path("InstallPath");
         println!("{:?}", path_value);
-        assert!(path_value.is_some());
+        assert!(path_value.is_ok());
         assert_eq!(path_value.unwrap(), PathBuf::from("/boot/EFI/Gentoo"));
 
         let u32_value = conf.get_u32("VersionsToKeep");
         println!("{:?}", u32_value);
-        assert!(u32_value.is_some());
+        assert!(u32_value.is_ok());
         assert_eq!(u32_value.unwrap(), 3 as u32);
 
         let bool_value = conf.get_bool("RegenerateGrubConfig");
         println!("{:?}", bool_value);
-        assert!(bool_value.is_some());
+        assert!(bool_value.is_ok());
         assert_eq!(bool_value.unwrap(), false);
     }
 }
