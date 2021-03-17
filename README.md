@@ -25,12 +25,13 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] ignore comments
     - [x] search for config files
     - [x] tested
+* [x] Use `try_main`
+    - reference `https://benhoyt.com/writings/count-words/`
 * [ ] Handle parsing version from module names which won't have 'linux-' prepended
+    - maybe just use a regex in KernelVersion::try_from
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
 * [ ] Allow hooks that can be ran after building the kernel
     - Used for running `emerge @preserved-rebuild`
 * [ ] Allow for a `keep` flag on `InstalledKernel`s so that certain kernels won't be removed
     - [ ] tested
-* [ ] Use `try_main`
-    - reference `https://benhoyt.com/writings/count-words/`

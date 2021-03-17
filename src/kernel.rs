@@ -489,6 +489,17 @@ mod tests {
         let invalid = KernelVersion::try_from("SoYouThink-ImAKernel");
         assert!(invalid.is_err());
     }
+    #[test]
+    fn kernel_version_from_src() {
+        let valid = KernelVersion::try_from("linux-5.11.0-gentoo");
+        assert!(valid.is_ok());
+    }
+
+    #[test]
+    fn kernel_version_from_module() {
+        let valid = KernelVersion::try_from("5.11.0-gentoo");
+        assert!(valid.is_ok());
+    }
 
     #[test]
     fn kernel_version_from_config() {
