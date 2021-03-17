@@ -630,16 +630,22 @@ mod tests {
             format!("Could not create {:?}", system_map_path)
         );
         let module_path = format!("{}/{}", get_test_path_string(), "modules");
+        let res = std::fs::DirBuilder::new()
+            .recursive(true)
+            .create(&module_path);
+        assert!(res.is_ok(), format!("Could not create {:?}", module_path));
         let installed_module_path = format!("{}/{}", module_path, "5.4.97-gentoo");
-        let res = std::fs::DirBuilder::new().create(&installed_module_path);
+        let res = std::fs::File::create(&installed_module_path);
         assert!(
             res.is_ok(),
             format!("Could not create {:?}", installed_module_path)
         );
 
         let src_path = format!("{}/{}", get_test_path_string(), "src");
+        let res = std::fs::DirBuilder::new().create(&src_path);
+        assert!(res.is_ok(), format!("Could not create {:?}", src_path));
         let installed_source_path = format!("{}/{}", src_path, "linux-5.4.97-gentoo");
-        let res = std::fs::DirBuilder::new().create(&installed_source_path);
+        let res = std::fs::File::create(&installed_source_path);
         assert!(
             res.is_ok(),
             format!("Could not create {:?}", installed_source_path)
@@ -652,5 +658,10 @@ mod tests {
             .execute();
 
         assert!(installed_kernels.is_ok());
+        let installed_kernels = installed_kernels.unwrap();
+        assert_eq!(installed_kernels.len(), 1);
+        let ker = installed_kernels.get(0).unwrap();
+        println!("Kernel:{}", ker);
+        assert_eq!(ker.files_missing(), false);
     }
 }
