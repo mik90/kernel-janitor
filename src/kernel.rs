@@ -1,6 +1,5 @@
 use std::{
-    borrow::Borrow, cmp::Ordering, collections::HashMap, convert::TryFrom, fmt, io, option::Option,
-    os::raw, path::Path, path::PathBuf,
+    cmp::Ordering, collections::HashMap, convert::TryFrom, fmt, io, option::Option, path::PathBuf,
 };
 
 use crate::dir_search;
@@ -259,24 +258,25 @@ impl fmt::Display for InstalledKernel {
 impl KernelSearch {
     pub fn new() -> KernelSearch {
         KernelSearch {
+            // Use default paths
             module_search_path: PathBuf::from("/lib/modules"),
             source_search_path: PathBuf::from("/usr/src"),
-            install_search_path: PathBuf::from("/boot/EFI/Gentoo"),
+            install_search_path: PathBuf::from("/boot"),
         }
     }
 
     /// Reference: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
-    pub fn module_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
+    pub fn with_module_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
         self.module_search_path = dir;
         self
     }
 
-    pub fn source_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
+    pub fn with_source_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
         self.source_search_path = dir;
         self
     }
 
-    pub fn install_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
+    pub fn with_install_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
         self.install_search_path = dir;
         self
     }
@@ -307,7 +307,7 @@ impl KernelSearch {
 
         // Search for source dir
         let source_dirs: Vec<_> =
-            dir_search::all_paths_with_prefix("linux", &self.source_search_path)?
+            dir_search::all_paths_with_prefix("linux-", &self.source_search_path)?
                 .into_iter()
                 .map(|path| (InstalledItemKind::SourceDir, path))
                 .collect();
@@ -452,6 +452,7 @@ impl KernelSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::tests::*;
     #[test]
     fn create_kernel_version() {
         let ver = KernelVersion::try_from("linux-5.7.11-gentoo");
@@ -606,5 +607,50 @@ mod tests {
             .with_vmlinuz_path(temp_path.clone())
             .with_source_path(temp_path.clone());
         assert_eq!(installed_kernel.files_missing(), false);
+    }
+    #[test]
+    fn find_all_installed_items() {
+        cleanup_test_dir();
+        init_test_dir();
+
+        let install_path = get_test_pathbuf();
+        let kernel_image_path = format!("{}/{}", get_test_path_string(), "vmlinuz-5.4.97-gentoo");
+        let res = std::fs::File::create(&kernel_image_path);
+        assert!(
+            res.is_ok(),
+            format!("Could not create {:?}", kernel_image_path)
+        );
+        let config_path = format!("{}/{}", get_test_path_string(), "config-5.4.97-gentoo");
+        let res = std::fs::File::create(&config_path);
+        assert!(res.is_ok(), format!("Could not create {:?}", config_path));
+        let system_map_path = format!("{}/{}", get_test_path_string(), "System.map-5.4.97-gentoo");
+        let res = std::fs::File::create(&system_map_path);
+        assert!(
+            res.is_ok(),
+            format!("Could not create {:?}", system_map_path)
+        );
+        let module_path = format!("{}/{}", get_test_path_string(), "modules");
+        let installed_module_path = format!("{}/{}", module_path, "5.4.97-gentoo");
+        let res = std::fs::DirBuilder::new().create(&installed_module_path);
+        assert!(
+            res.is_ok(),
+            format!("Could not create {:?}", installed_module_path)
+        );
+
+        let src_path = format!("{}/{}", get_test_path_string(), "src");
+        let installed_source_path = format!("{}/{}", src_path, "linux-5.4.97-gentoo");
+        let res = std::fs::DirBuilder::new().create(&installed_source_path);
+        assert!(
+            res.is_ok(),
+            format!("Could not create {:?}", installed_source_path)
+        );
+
+        let installed_kernels = KernelSearch::new()
+            .with_install_search_path(install_path)
+            .with_module_search_path(PathBuf::from(module_path))
+            .with_source_search_path(PathBuf::from(src_path))
+            .execute();
+
+        assert!(installed_kernels.is_ok());
     }
 }

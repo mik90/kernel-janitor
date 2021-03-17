@@ -42,17 +42,11 @@ pub fn all_paths(dir: &Path) -> io::Result<Vec<PathBuf>> {
 mod tests {
 
     use super::*;
+    use crate::utils::tests::*;
 
-    fn get_test_dir() -> PathBuf {
-        let thread = std::thread::current();
-        let thread_name = thread.name().unwrap_or("UnknownThreadName");
-        let thread_name_cleaned = thread_name.to_string().replace(":", "_");
-        PathBuf::from(format!("unit-test-temp/{}", thread_name_cleaned))
-    }
-
-    fn setup_test_dir() -> io::Result<()> {
-        let test_dir = get_test_dir();
-        fs::create_dir_all(&test_dir)?;
+    fn create_dummy_files() -> io::Result<()> {
+        init_test_dir();
+        let test_dir = get_test_pathbuf();
 
         let mut path_0 = test_dir.clone();
         path_0.push("old-file.txt");
@@ -64,42 +58,23 @@ mod tests {
 
         Ok(())
     }
-
-    fn cleanup_test_dir() -> io::Result<()> {
-        let test_dir = get_test_dir();
-        for entry in fs::read_dir(test_dir)? {
-            let path = entry?.path();
-
-            if path.is_file() {
-                println!("Attempting to delete file {:?}", path);
-                fs::remove_file(path)?;
-            } else if path.is_dir() {
-                println!("Attempting to delete dir {:?}", path);
-                fs::remove_dir_all(path)?;
-            } else {
-                println!("Unknown file type {:?}", path);
-            }
-        }
-        Ok(())
-    }
     #[test]
     fn test_setup_cleanup() {
-        let setup_res = setup_test_dir();
-        let cleanup_res = cleanup_test_dir();
-
-        assert!(setup_res.is_ok());
-        assert!(cleanup_res.is_ok());
+        init_test_dir();
+        cleanup_test_dir();
     }
     #[test]
     fn find_entries() {
-        assert!(setup_test_dir().is_ok());
+        init_test_dir();
+        let res = create_dummy_files();
+        assert!(res.is_ok());
 
-        let search_dir = get_test_dir();
+        let search_dir = get_test_pathbuf();
         let res = all_paths_with_prefix("new", &search_dir);
         assert!(res.is_ok());
         assert_eq!(res.unwrap().len(), 1);
 
-        assert!(cleanup_test_dir().is_ok());
+        cleanup_test_dir();
     }
 
     #[test]

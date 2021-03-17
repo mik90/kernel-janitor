@@ -88,7 +88,7 @@ impl FlagParser {
             .join("\n")
     }
 
-    pub fn parse_args_from_env(mut self) -> ParseResults {
+    pub fn parse_args_from_env(self) -> ParseResults {
         let args = std::env::args().collect::<Vec<_>>();
         self.parse_args(args)
     }
