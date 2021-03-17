@@ -1,6 +1,6 @@
 use std::{
     borrow::Borrow, cmp::Ordering, collections::HashMap, convert::TryFrom, fmt, io, option::Option,
-    path::Path, path::PathBuf,
+    os::raw, path::Path, path::PathBuf,
 };
 
 use crate::dir_search;
@@ -71,31 +71,55 @@ impl KernelVersion {
 }
 
 impl TryFrom<&str> for KernelVersion {
-    type Error = std::num::ParseIntError;
+    type Error = Box<dyn std::error::Error>;
 
     fn try_from(raw_value: &str) -> Result<Self, Self::Error> {
-        // linux-5.7.11-rc10-gentoo.old
-        // -> ['linux', '5.7.11', 'rc10', 'gentoo.old']
-        //        0        1         2          3
-        let split_by_dash: Vec<&str> = raw_value.split('-').collect();
+        let first_char = raw_value.chars().nth(0);
+        let first_char_is_num = match first_char {
+            Some(c) => c.is_numeric(),
+            None => return Err("Could not parse empty string as KernelVersion".into()),
+        };
+
+        //  Skip the first item if the string doesn't start with a number
+        let (version_triple, release_candidate_num) = if first_char_is_num {
+            // Example modules dir:
+            //  5.7.11-rc10-gentoo
+            // -> ['5.7.11', 'rc10', 'gentoo']
+            //        0        1         2
+            let split_by_dash: Vec<&str> = raw_value.split('-').collect();
+            if split_by_dash.len() < 2 {
+                return Err(format!("Could not parse {} as KernelVersion!", raw_value).into());
+            }
+            (split_by_dash[0], split_by_dash[1])
+        } else {
+            // Example linux src dir:
+            // linux-5.7.11-rc10-gentoo.old
+            // -> ['linux', '5.7.11', 'rc10', 'gentoo.old']
+            //        0        1         2          3
+            let split_by_dash: Vec<&str> = raw_value.split('-').collect();
+            if split_by_dash.len() < 3 {
+                return Err(format!("Could not parse {} as KernelVersion!", raw_value).into());
+            }
+            (split_by_dash[1], split_by_dash[2])
+        };
 
         // Collect the first 3 items or return in error
         // ['major', 'minor', 'patch']
-        let version_triple: Result<Vec<_>, _> = split_by_dash[1]
+        let version_triple: Result<Vec<_>, _> = version_triple
             .split('.')
             .into_iter()
             .take(3)
             .map(|x| x.parse::<u32>())
             .collect();
         if version_triple.is_err() {
-            return Err(version_triple.unwrap_err());
+            return Err(version_triple.unwrap_err().into());
         }
         let version_triple = version_triple.unwrap();
 
         let is_old = raw_value.ends_with(".old");
 
         // release candidate
-        let release_candidate_num = split_by_dash[2]
+        let release_candidate_num = release_candidate_num
             .strip_prefix("rc")
             .unwrap_or_default()
             .parse::<u32>()
@@ -111,7 +135,7 @@ impl TryFrom<&str> for KernelVersion {
     }
 }
 impl TryFrom<String> for KernelVersion {
-    type Error = std::num::ParseIntError;
+    type Error = Box<dyn std::error::Error>;
 
     fn try_from(raw_value: String) -> Result<Self, Self::Error> {
         KernelVersion::try_from(raw_value.as_str())
@@ -487,6 +511,7 @@ mod tests {
     #[test]
     fn kernel_invalid() {
         let invalid = KernelVersion::try_from("SoYouThink-ImAKernel");
+        println!("invalid: {:?}", invalid);
         assert!(invalid.is_err());
     }
     #[test]
