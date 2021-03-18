@@ -17,8 +17,7 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
             "manual_edit",
             "-m",
             "--manual-edit",
-            "Let the user copy over and edit the kernel configuration before building.
-            Otherwise, configuration will be copied over automatically.",
+            "Let the user manually copy over and edit the kernel configuration before building.",
         )
         .with_flag(
             "clean_only",
@@ -31,6 +30,12 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
             "-l",
             "--list",
             "List installed kernels and then exit",
+        )
+        .with_flag(
+            "pretend",
+            "-p",
+            "--pretend",
+            "Don't actually run the command, just print it out",
         )
         .parse_args_from_env();
 

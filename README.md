@@ -27,8 +27,8 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] tested
 * [x] Use `try_main`
     - reference `https://benhoyt.com/writings/count-words/`
-* [ ] Handle parsing version from module names which won't have 'linux-' prepended
-    - maybe just use a regex in KernelVersion::try_from
+* [x] Handle parsing version from module names which won't have 'linux-' prepended
+* [ ] Verions that are old shouldn't have source dirs or module dirs with `.old` on them
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
 * [ ] Allow hooks that can be ran after building the kernel

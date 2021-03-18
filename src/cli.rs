@@ -63,13 +63,13 @@ impl FlagParser {
         self
     }
 
-    fn with_help_flag(self) -> FlagParser {
-        self.with_flag(
+    fn add_help_flag(&mut self) {
+        self.flags.push(Flag::new(
             "help",
             "-h",
             "--help",
             "Print this message and all of the available flags",
-        )
+        ));
     }
 
     pub fn help_message(&self) -> String {
@@ -77,7 +77,7 @@ impl FlagParser {
             .iter()
             .map(|flag| {
                 format!(
-                    "{},{:width$}{:}",
+                    "{}, {:width$}{:}",
                     flag.short_form,
                     flag.long_form,
                     flag.description,
@@ -95,6 +95,8 @@ impl FlagParser {
 
     /// Returns a HashSet of the enabled flag names
     pub fn parse_args(mut self, args: Vec<String>) -> ParseResults {
+        // Create the help flag at the last possible moment
+        self.add_help_flag();
         // nested `for` loops, yuck
         for arg in args {
             for flag in &self.flags {
@@ -103,7 +105,7 @@ impl FlagParser {
                 }
             }
         }
-        ParseResults::from(self.with_help_flag())
+        ParseResults::from(self)
     }
 }
 
