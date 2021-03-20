@@ -210,7 +210,7 @@ mod tests {
         let path_value = conf.get_path("InstallPath");
         println!("{:?}", path_value);
         assert!(path_value.is_ok());
-        assert_eq!(path_value.unwrap(), PathBuf::from("/boot/EFI/Gentoo"));
+        assert_eq!(path_value.unwrap(), PathBuf::from("/boot"));
 
         let u32_value = conf.get_u32("VersionsToKeep");
         println!("{:?}", u32_value);

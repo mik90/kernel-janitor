@@ -28,6 +28,7 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
 * [x] Use `try_main`
     - reference `https://benhoyt.com/writings/count-words/`
 * [x] Handle parsing version from module names which won't have 'linux-' prepended
+* [ ] impl `InstalledItem` and use it instead of a `(KernelVersion, InstalledItemKind, PathBuf)` tuple
 * [ ] Verions that are old shouldn't have source dirs or module dirs with `.old` on them
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
