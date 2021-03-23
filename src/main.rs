@@ -3,6 +3,7 @@ mod conf;
 mod dir_search;
 mod kernel;
 mod utils;
+
 fn main() {
     if let Err(err) = try_main() {
         eprintln!("{}", err);
@@ -52,14 +53,17 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let config = conf::Config::find_in_fs()?;
+
+    let trash_path = config.get_path("TrashPath")?;
+    let versions_to_keep = config.get_u32("VersionsToKeep")?;
+    let regen_grub_cfg = config.get_bool("RegenerateGrubConfig")?;
+    let emerge_pres_rebuild = config.get_bool("EmergePreservedRebuild")?;
+
     let install_path = config.get_path("InstallPath")?;
     let module_path = config.get_path("KernelModulesPath")?;
     let src_path = config.get_path("KernelSourcePath")?;
-    let installed_kernels = kernel::KernelSearch::new()
-        .with_install_search_path(install_path)
-        .with_module_search_path(module_path)
-        .with_source_search_path(src_path)
-        .execute()?;
+    let installed_kernels =
+        kernel::KernelSearch::new(install_path, src_path, module_path).execute()?;
 
     if parsed_results.flag_enabled("list") {
         println!("Listing installed kernels...");

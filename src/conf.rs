@@ -222,4 +222,15 @@ mod tests {
         assert!(bool_value.is_ok());
         assert_eq!(bool_value.unwrap(), false);
     }
+
+    #[test]
+    fn invalid_parse() {
+        let example_conf = PathBuf::from("kernel-janitor-example.conf");
+        let conf = Config::new(&example_conf);
+        assert!(conf.is_ok());
+        let conf = conf.unwrap();
+
+        let versions_to_keep = conf.get_bool("VersionsToKeep");
+        assert!(versions_to_keep.is_err());
+    }
 }

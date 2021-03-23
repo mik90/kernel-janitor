@@ -292,29 +292,17 @@ impl fmt::Display for InstalledKernel {
 }
 
 impl KernelSearch {
-    pub fn new() -> KernelSearch {
+    pub fn new(
+        install_search_path: PathBuf,
+        source_search_path: PathBuf,
+        module_search_path: PathBuf,
+    ) -> KernelSearch {
         KernelSearch {
             // Use default paths
-            module_search_path: PathBuf::from("/lib/modules"),
-            source_search_path: PathBuf::from("/usr/src"),
-            install_search_path: PathBuf::from("/boot"),
+            install_search_path: install_search_path,
+            source_search_path: source_search_path,
+            module_search_path: module_search_path,
         }
-    }
-
-    /// Reference: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
-    pub fn with_module_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
-        self.module_search_path = dir;
-        self
-    }
-
-    pub fn with_source_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
-        self.source_search_path = dir;
-        self
-    }
-
-    pub fn with_install_search_path<'a>(&'a mut self, dir: PathBuf) -> &'a mut KernelSearch {
-        self.install_search_path = dir;
-        self
     }
 
     fn find_all_installed_items(&self) -> io::Result<Vec<InstalledItem>> {
@@ -672,11 +660,12 @@ mod tests {
             format!("Could not create {:?}", installed_source_path)
         );
 
-        let installed_kernels = KernelSearch::new()
-            .with_install_search_path(install_path)
-            .with_module_search_path(PathBuf::from(module_path))
-            .with_source_search_path(PathBuf::from(src_path))
-            .execute();
+        let installed_kernels = KernelSearch::new(
+            install_path,
+            PathBuf::from(src_path),
+            PathBuf::from(module_path),
+        )
+        .execute();
 
         assert!(installed_kernels.is_ok());
         let installed_kernels = installed_kernels.unwrap();
@@ -713,11 +702,12 @@ mod tests {
             .create(&source_path)
             .unwrap();
 
-        let installed_kernels = KernelSearch::new()
-            .with_install_search_path(install_path)
-            .with_module_search_path(PathBuf::from(module_path))
-            .with_source_search_path(PathBuf::from(source_path))
-            .execute();
+        let installed_kernels = KernelSearch::new(
+            install_path,
+            PathBuf::from(source_path),
+            PathBuf::from(module_path),
+        )
+        .execute();
 
         assert!(installed_kernels.is_ok());
         let installed_kernels = installed_kernels.unwrap();
