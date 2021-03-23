@@ -707,14 +707,25 @@ mod tests {
         let installed_module_path = format!("{}/{}", module_path, "5.4.97-gentoo");
         std::fs::File::create(&installed_module_path).unwrap();
 
+        let source_path = format!("{}/{}", get_test_path_string(), "src");
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .create(&source_path)
+            .unwrap();
+
         let installed_kernels = KernelSearch::new()
             .with_install_search_path(install_path)
             .with_module_search_path(PathBuf::from(module_path))
+            .with_source_search_path(PathBuf::from(source_path))
             .execute();
 
         assert!(installed_kernels.is_ok());
         let installed_kernels = installed_kernels.unwrap();
-        assert_eq!(installed_kernels.len(), 2);
+        assert_eq!(
+            installed_kernels.len(),
+            2,
+            "Only expected kernel versions 5.4.97 and 5.4.97.old"
+        );
         for k in installed_kernels {
             println!("Kernel: {}", k);
             assert!(k.module_path.is_some(), "expected module path to be found");
