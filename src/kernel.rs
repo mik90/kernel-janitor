@@ -305,6 +305,23 @@ impl fmt::Display for InstalledKernel {
     }
 }
 
+impl fmt::Debug for InstalledKernel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Version: {}, \n
+               Binary path: {:?}, Config path: {:?}, System map path: {:?},\n
+               Source dir: {:?}, Module dir: {:?}",
+            self.version,
+            self.vmlinuz_path,
+            self.config_path,
+            self.system_map_path,
+            self.source_path,
+            self.module_path
+        )
+    }
+}
+
 impl KernelSearch {
     pub fn new(
         install_search_path: PathBuf,
@@ -378,6 +395,71 @@ impl KernelSearch {
         .collect();
 
         Ok(all_items)
+    }
+
+    /// Kernel installs marked `.old` rely on the non `.old` equivalent source directory
+    /// and module path. This function searches for all old installs and then copies the
+    /// source and module paths from their non-old equivalents.
+    fn find_src_and_mod_for_old_install(
+        version_map: &mut HashMap<KernelVersion, InstalledKernel>,
+    ) -> io::Result<()> {
+        let old_versions: Vec<KernelVersion> = version_map
+            .keys()
+            .into_iter()
+            .filter(|version| version.is_old())
+            .map(|version| version.clone())
+            .collect();
+        // return an error if there isn't one in the map
+        for old_version in old_versions {
+            // Get non old ver
+            let mut non_old_version = old_version.clone();
+            non_old_version.is_old = false;
+            // Find the non-old equivalent module dir in the version map
+            let (module_path, src_path) = match version_map.get(&non_old_version) {
+                Some(non_old_install) => {
+                    if non_old_install.module_path.is_none() {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "{:?} did not have a module path and {:?} relies on it",
+                                non_old_version, old_version
+                            ),
+                        ));
+                    } else if non_old_install.source_path.is_none() {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "{:?} did not have a source path and {:?} relies on it",
+                                non_old_version, old_version
+                            ),
+                        ));
+                    }
+                    (
+                        non_old_install.module_path.clone(),
+                        non_old_install.source_path.clone(),
+                    )
+                }
+                None => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Could not find a non.old equivalent for {:?}", old_version),
+                    ));
+                }
+            };
+            match version_map.get_mut(&old_version) {
+                Some(old_install) => {
+                    old_install.module_path = module_path;
+                    old_install.source_path = src_path;
+                }
+                None => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Could not find old version despite it just being here",
+                    ));
+                }
+            };
+        }
+        Ok(())
     }
 
     /// Fold the vector of installed item info into InstalledKernels
@@ -456,51 +538,7 @@ impl KernelSearch {
                 }
             }
         }
-
-        let old_versions: Vec<KernelVersion> = version_map
-            .keys()
-            .into_iter()
-            .filter(|version| version.is_old())
-            .map(|version| version.clone())
-            .collect();
-        // return an error if there isn't one in the map
-        for old_version in old_versions {
-            // Get non old ver
-            let mut non_old_version = old_version.clone();
-            non_old_version.is_old = false;
-            // Find the non-old equivalent module dir in the version map
-            let module_dir = match version_map.get(&non_old_version) {
-                Some(non_old_install) => {
-                    if non_old_install.module_path.is_none() {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            format!(
-                                "{:?} did not have a module path and {:?} relies on it",
-                                non_old_version, old_version
-                            ),
-                        ));
-                    }
-                    non_old_install.module_path.clone()
-                }
-                None => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Could not find a non.old equivalent for {:?}", old_version),
-                    ));
-                }
-            };
-            match version_map.get_mut(&old_version) {
-                Some(old_install) => {
-                    old_install.module_path = module_dir;
-                }
-                None => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "Could not find old version despite it just being here",
-                    ));
-                }
-            };
-        }
+        KernelSearch::find_src_and_mod_for_old_install(&mut version_map)?;
 
         Ok(version_map
             .into_iter()
@@ -735,7 +773,7 @@ mod tests {
     }
 
     #[test]
-    fn old_kernel_version_module_dir() {
+    fn old_kernels_use_new_module_and_src() {
         cleanup_test_dir();
         init_test_dir();
 
@@ -751,14 +789,21 @@ mod tests {
             .recursive(true)
             .create(&module_path)
             .unwrap();
-
         let installed_module_path = format!("{}/{}", module_path, "5.4.97-gentoo");
-        std::fs::File::create(&installed_module_path).unwrap();
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .create(&installed_module_path)
+            .unwrap();
 
         let source_path = format!("{}/{}", get_test_path_string(), "src");
         std::fs::DirBuilder::new()
             .recursive(true)
             .create(&source_path)
+            .unwrap();
+        let installed_source_path = format!("{}/{}", source_path, "linux-5.4.97-gentoo");
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .create(&installed_source_path)
             .unwrap();
 
         let installed_kernels = KernelSearch::new(
@@ -768,7 +813,10 @@ mod tests {
         )
         .execute();
 
-        assert!(installed_kernels.is_ok());
+        assert!(
+            installed_kernels.is_ok(),
+            format!("{:?}", installed_kernels.unwrap_err())
+        );
         let installed_kernels = installed_kernels.unwrap();
         assert_eq!(
             installed_kernels.len(),
@@ -778,9 +826,14 @@ mod tests {
         for k in installed_kernels {
             println!("Kernel: {}", k);
             assert!(k.module_path.is_some(), "expected module path to be found");
+            assert!(k.source_path.is_some(), "expected source path to be found");
             assert_eq!(
                 k.module_path.unwrap(),
                 PathBuf::from(&installed_module_path)
+            );
+            assert_eq!(
+                k.source_path.unwrap(),
+                PathBuf::from(&installed_source_path)
             );
         }
     }
