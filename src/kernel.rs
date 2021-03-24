@@ -1,5 +1,10 @@
 use std::{
-    cmp::Ordering, collections::HashMap, convert::TryFrom, fmt, io, option::Option, path::PathBuf,
+    cmp::Ordering,
+    collections::{hash_map, HashMap},
+    convert::TryFrom,
+    error, fmt, io,
+    option::Option,
+    path::PathBuf,
 };
 
 use crate::dir_search;
@@ -157,6 +162,7 @@ impl TryFrom<&str> for KernelVersion {
         })
     }
 }
+
 impl TryFrom<String> for KernelVersion {
     type Error = VersionParseError;
 
@@ -191,18 +197,26 @@ impl PartialOrd for KernelVersion {
     }
 }
 
-impl PartialEq for KernelVersion {
-    fn eq(&self, other: &Self) -> bool {
+impl KernelVersion {
+    // An `old` version will map to a non `old` source dir and module dir
+    pub fn eq_ignore_is_old(&self, other: &Self) -> bool {
         self.major == other.major
             && self.minor == other.minor
             && self.patch == other.patch
-            && self.is_old == other.is_old
             // Ensure both do or don't have a release candidate
-            && self.release_candidate_num.is_some() == other.release_candidate_num.is_some()
-            // At this point,they both have or don't have a release candidate number.
-            // Compare values, default to zero. If neither have it they'll be equal.
-            // If they both have it, they'll unwrap valid values.
-            && self.release_candidate_num.unwrap_or(0) == other.release_candidate_num.unwrap_or(0)
+            &&
+            (self.release_candidate_num.is_some() == other.release_candidate_num.is_some()
+                // At this point,they both have or don't have a release candidate number.
+                // Compare values, default to zero. If neither have it they'll be equal.
+                // If they both have it, they'll unwrap valid values.
+                && self.release_candidate_num.unwrap_or(0) == other.release_candidate_num.unwrap_or(0)
+            )
+    }
+}
+
+impl PartialEq for KernelVersion {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq_ignore_is_old(other) && self.is_old == other.is_old()
     }
 }
 impl fmt::Display for KernelVersion {
@@ -379,7 +393,7 @@ impl KernelSearch {
     }
 
     /// Fold the vector of installed item info into InstalledKernels
-    fn fold_items_to_kernels(items: Vec<InstalledItem>) -> Vec<InstalledKernel> {
+    fn fold_items_to_kernels(items: Vec<InstalledItem>) -> io::Result<Vec<InstalledKernel>> {
         let mut version_map: HashMap<KernelVersion, InstalledKernel> = HashMap::new();
         // - Check if that KernelVersion is already present as an InstalledKernel
         //   - If it is, add the path to the InstalledKernel
@@ -455,17 +469,62 @@ impl KernelSearch {
             }
         }
 
-        version_map
+        let old_versions: Vec<KernelVersion> = version_map
+            .keys()
+            .into_iter()
+            .filter(|version| version.is_old())
+            .map(|version| version.clone())
+            .collect();
+        // return an error if there isn't one in the map
+        for old_version in old_versions {
+            // Get non old ver
+            let mut non_old_version = old_version.clone();
+            non_old_version.is_old = false;
+            // Find the non-old equivalent module dir in the version map
+            let module_dir = match version_map.get(&non_old_version) {
+                Some(non_old_install) => {
+                    if non_old_install.module_path.is_none() {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "{:?} did not have a module path and {:?} relies on it",
+                                non_old_version, old_version
+                            ),
+                        ));
+                    }
+                    non_old_install.module_path.clone()
+                }
+                None => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Could not find a non.old equivalent for {:?}", old_version),
+                    ));
+                }
+            };
+            match version_map.get_mut(&old_version) {
+                Some(old_install) => {
+                    old_install.module_path = module_dir;
+                }
+                None => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Could not find old version despite it just being here",
+                    ));
+                }
+            };
+        }
+
+        Ok(version_map
             .into_iter()
             .map(|(_, installed_kernel)| installed_kernel)
-            .collect()
+            .collect())
     }
 
     /// Actually run the search and return all of the found InstalledKernels
     pub fn execute(&self) -> io::Result<Vec<InstalledKernel>> {
         let all_installed_items = self.find_all_installed_items()?;
 
-        let installed_kernels = KernelSearch::fold_items_to_kernels(all_installed_items);
+        let installed_kernels = KernelSearch::fold_items_to_kernels(all_installed_items)?;
 
         Ok(installed_kernels)
     }
