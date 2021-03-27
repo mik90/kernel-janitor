@@ -4,7 +4,7 @@ use std::{
     convert::TryFrom,
     error, fmt, io,
     option::Option,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use crate::dir_search;
@@ -53,6 +53,7 @@ pub enum InstalledItemKind {
     ModuleDir,
 }
 
+#[derive(Eq)]
 pub struct InstalledKernel {
     pub version: KernelVersion,
     pub module_path: Option<PathBuf>,
@@ -321,18 +322,36 @@ impl fmt::Debug for InstalledKernel {
         )
     }
 }
+/// Order installed kernels by their version
+impl Ord for InstalledKernel {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.version.cmp(&other.version)
+    }
+}
+
+impl PartialOrd for InstalledKernel {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.version.cmp(&other.version))
+    }
+}
+
+impl PartialEq for InstalledKernel {
+    fn eq(&self, other: &Self) -> bool {
+        self.version == other.version
+    }
+}
 
 impl KernelSearch {
     pub fn new(
-        install_search_path: PathBuf,
-        source_search_path: PathBuf,
-        module_search_path: PathBuf,
+        install_search_path: &Path,
+        source_search_path: &Path,
+        module_search_path: &Path,
     ) -> KernelSearch {
         KernelSearch {
             // Use default paths
-            install_search_path: install_search_path,
-            source_search_path: source_search_path,
-            module_search_path: module_search_path,
+            install_search_path: install_search_path.to_path_buf(),
+            source_search_path: source_search_path.to_path_buf(),
+            module_search_path: module_search_path.to_path_buf(),
         }
     }
 
@@ -550,8 +569,8 @@ impl KernelSearch {
     pub fn execute(&self) -> io::Result<Vec<InstalledKernel>> {
         let all_installed_items = self.find_all_installed_items()?;
 
-        let installed_kernels = KernelSearch::fold_items_to_kernels(all_installed_items)?;
-
+        let mut installed_kernels = KernelSearch::fold_items_to_kernels(all_installed_items)?;
+        installed_kernels.sort();
         Ok(installed_kernels)
     }
 }
@@ -758,9 +777,9 @@ mod tests {
         );
 
         let installed_kernels = KernelSearch::new(
-            install_path,
-            PathBuf::from(src_path),
-            PathBuf::from(module_path),
+            &install_path,
+            &PathBuf::from(src_path),
+            &PathBuf::from(module_path),
         )
         .execute();
 
@@ -795,21 +814,21 @@ mod tests {
             .create(&installed_module_path)
             .unwrap();
 
-        let source_path = format!("{}/{}", get_test_path_string(), "src");
+        let src_path = format!("{}/{}", get_test_path_string(), "src");
         std::fs::DirBuilder::new()
             .recursive(true)
-            .create(&source_path)
+            .create(&src_path)
             .unwrap();
-        let installed_source_path = format!("{}/{}", source_path, "linux-5.4.97-gentoo");
+        let installed_source_path = format!("{}/{}", src_path, "linux-5.4.97-gentoo");
         std::fs::DirBuilder::new()
             .recursive(true)
             .create(&installed_source_path)
             .unwrap();
 
         let installed_kernels = KernelSearch::new(
-            install_path,
-            PathBuf::from(source_path),
-            PathBuf::from(module_path),
+            &install_path,
+            &PathBuf::from(src_path),
+            &PathBuf::from(module_path),
         )
         .execute();
 

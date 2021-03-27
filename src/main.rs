@@ -1,7 +1,10 @@
+use std::{borrow::Borrow, path::Path};
+
 mod cli;
 mod conf;
 mod dir_search;
 mod kernel;
+mod update;
 mod utils;
 
 fn main() {
@@ -45,12 +48,11 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    if parsed_results.flag_enabled("manual_edit") {
-        println!("manual edit enabled");
-    }
     if parsed_results.flag_enabled("clean_only") {
         println!("clean only enabled");
     }
+
+    let pretend = parsed_results.flag_enabled("pretend");
 
     let config = conf::Config::find_in_fs()?;
 
@@ -63,12 +65,50 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
     let module_path = config.get_path("KernelModulesPath")?;
     let src_path = config.get_path("KernelSourcePath")?;
     let installed_kernels =
-        kernel::KernelSearch::new(install_path, src_path, module_path).execute()?;
+        kernel::KernelSearch::new(&install_path, &src_path, &module_path).execute()?;
 
     if parsed_results.flag_enabled("list") {
-        println!("Listing installed kernels...");
+        println!("Listing installed kernels (oldest to newest)...");
         for k in installed_kernels {
             println!("  {}", k);
+        }
+        return Ok(());
+    }
+
+    if parsed_results.flag_enabled("manual_edit") {
+        println!("manual edit enabled");
+    } else {
+        let newest_kernel = match installed_kernels.last() {
+            Some(i) => i,
+            None => return Err("No installed kernels found".into()),
+        };
+
+        let newest_src_path = match &newest_kernel.source_path {
+            Some(p) => p,
+            None => {
+                return Err(format!(
+                    "Could not find a source directory for kernel version {:?}",
+                    newest_kernel.version
+                )
+                .into())
+            }
+        };
+
+        // Copy most recent kernel config over
+        if let Some(installed_config) = &newest_kernel.config_path {
+            // Install to $newest_src_path/.config
+            let to = Path::new(&newest_src_path).join(".config");
+            if pretend {
+                println!("Pretending to copy from {:?} to {:?}", installed_config, to);
+            } else {
+                std::fs::copy(installed_config, to)?;
+            }
+        } else {
+            return Err(format!(
+                "Could not find a config file in {:?} for kernel version {:?}",
+                install_path, newest_kernel.version
+            )
+            .into());
         }
     }
 

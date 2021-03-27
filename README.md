@@ -10,8 +10,8 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] tested
 * [x] Implement kernel version searching
     - [x] use builder pattern to create configurable search
-    - [ ] tested
-* [ ] Parse command line input (In progress)
+    - [x] tested
+* [x] Parse command line input
     - [x] handle flags
     - [x] print out help
     - [x] tested
@@ -29,7 +29,8 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - reference `https://benhoyt.com/writings/count-words/`
 * [x] Handle parsing version from module names which won't have 'linux-' prepended
 * [x] impl `InstalledItem` and use it instead of a `(KernelVersion, InstalledItemKind, PathBuf)` tuple
-* [ ] Verions that are old shouldn't expect source dirs or module dirs with `.old` on them
+* [x] Verions that are old shouldn't expect source dirs or module dirs with `.old` on them
+* Update`
 * [ ] Logic for deleting old kernels and related files
     - [ ] tested
 * [ ] Allow hooks that can be ran after building the kernel
