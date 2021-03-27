@@ -7,6 +7,9 @@ mod kernel;
 mod update;
 mod utils;
 
+fn user_is_root() -> bool {
+    std::process::id() == 0
+}
 fn main() {
     if let Err(err) = try_main() {
         eprintln!("{}", err);
@@ -52,7 +55,13 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         println!("clean only enabled");
     }
 
-    let pretend = parsed_results.flag_enabled("pretend");
+    let pretend = match parsed_results.flag_enabled("pretend") {
+        true => PretendStatus::Pretend,
+        false => PretendStatus::RunTheDamnThing,
+    };
+    if !pretend && !user_is_root() {
+        return Err("User is not root and \'pretend\' isn\'t specified. Exiting...".into());
+    }
 
     let config = conf::Config::find_in_fs()?;
 
@@ -78,39 +87,10 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
     if parsed_results.flag_enabled("manual_edit") {
         println!("manual edit enabled");
     } else {
-        let newest_kernel = match installed_kernels.last() {
-            Some(i) => i,
-            None => return Err("No installed kernels found".into()),
-        };
-
-        let newest_src_path = match &newest_kernel.source_path {
-            Some(p) => p,
-            None => {
-                return Err(format!(
-                    "Could not find a source directory for kernel version {:?}",
-                    newest_kernel.version
-                )
-                .into())
-            }
-        };
-
-        // Copy most recent kernel config over
-        if let Some(installed_config) = &newest_kernel.config_path {
-            // Install to $newest_src_path/.config
-            let to = Path::new(&newest_src_path).join(".config");
-            if pretend {
-                println!("Pretending to copy from {:?} to {:?}", installed_config, to);
-            } else {
-                std::fs::copy(installed_config, to)?;
-            }
-        } else {
-            return Err(format!(
-                "Could not find a config file in {:?} for kernel version {:?}",
-                install_path, newest_kernel.version
-            )
-            .into());
-        }
+        update::copy_config(pretend, &install_path, &installed_kernels)?;
     }
+
+    // TODO Run more functions from update.rs once implemented
 
     Ok(())
 }
