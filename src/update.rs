@@ -1,21 +1,22 @@
 use crate::kernel::InstalledKernel;
-use std::path::Path;
+use std::io;
+use std::process::Command;
+use std::{
+    io::{stderr, Write},
+    path::Path,
+};
 
+#[derive(PartialEq, Eq)]
 pub enum PretendStatus {
     Pretend,
     RunTheDamnThing,
 }
 
 pub fn copy_config(
-    pretend: PretendStatus,
+    pretend: &PretendStatus,
     install_path: &Path,
-    installed_kernels: &[InstalledKernel],
+    newest_kernel: &InstalledKernel,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let newest_kernel = match installed_kernels.last() {
-        Some(i) => i,
-        None => return Err("No installed kernels found".into()),
-    };
-
     let newest_src_path = match &newest_kernel.source_path {
         Some(p) => p,
         None => {
@@ -31,11 +32,17 @@ pub fn copy_config(
     if let Some(installed_config) = &newest_kernel.config_path {
         // Install to $newest_src_path/.config
         let to = Path::new(&newest_src_path).join(".config");
-        if pretend {
-            println!("Pretending to copy from {:?} to {:?}", installed_config, to);
-        } else {
-            std::fs::copy(installed_config, to)?;
-        }
+        match pretend {
+            PretendStatus::Pretend => {
+                println!("Pretending to copy from {:?} to {:?}", installed_config, to)
+            }
+            PretendStatus::RunTheDamnThing => {
+                let res = std::fs::copy(installed_config, to);
+                if res.is_err() {
+                    return Err(res.unwrap_err().into());
+                }
+            }
+        };
     } else {
         return Err(format!(
             "Could not find a config file in {:?} for kernel version {:?}",
@@ -47,19 +54,112 @@ pub fn copy_config(
     Ok(())
 }
 
-pub fn build_kernel() -> Result<(), Box<dyn std::error::Error>> {
-    // TODO make oldconfig
+pub fn build_kernel(
+    pretend: &PretendStatus,
+    src_dir: &Path,
+    install_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // make oldconfig
+    if pretend == &PretendStatus::Pretend {
+        println!("Pretending to run \'make oldconfig\' in {:?}", src_dir);
+    } else {
+        let output = Command::new("make")
+            .arg("oldconfig")
+            .current_dir(src_dir)
+            .output()?;
+        io::stderr().write_all(&output.stderr)?;
+        io::stdout().write_all(&output.stdout)?;
+    }
 
-    // TODO make -j $(nproc)
+    // Number of processors
+    let nproc_stdout = Command::new("nproc").output()?.stdout;
+    // Remove whitespace and newlines
+    let nproc = std::str::from_utf8(&nproc_stdout)?.trim();
 
-    // TODO make modules_install
+    // make -j $(nproc)
+    if pretend == &PretendStatus::Pretend {
+        println!("Pretending to run \'make -j{}\' in {:?}", nproc, src_dir);
+    } else {
+        let output = Command::new("make")
+            .arg("-j")
+            .arg(nproc)
+            .current_dir(src_dir)
+            .output()?;
+        io::stderr().write_all(&output.stderr)?;
+        io::stdout().write_all(&output.stdout)?;
+    }
 
-    // TODO make install $install_path
+    // make modules_install
+    if pretend == &PretendStatus::Pretend {
+        println!(
+            "Pretending to run \'make modules_install\' in {:?}",
+            src_dir
+        );
+    } else {
+        let output = Command::new("make")
+            .arg("modules_install")
+            .current_dir(src_dir)
+            .output()?;
+        io::stderr().write_all(&output.stderr)?;
+        io::stdout().write_all(&output.stdout)?;
+    }
+
+    // make install (with INSTALL_PATH env)
+    if pretend == &PretendStatus::Pretend {
+        println!(
+            "Pretending to run \'make install\' in {:?} with env INSTALL_PATH={:?}",
+            src_dir, install_path
+        );
+    } else {
+        let output = Command::new("make")
+            .arg("install")
+            .current_dir(src_dir)
+            .env("INSTALL_PATH", install_path)
+            .output()?;
+        io::stderr().write_all(&output.stderr)?;
+        io::stdout().write_all(&output.stdout)?;
+    }
     Ok(())
 }
 
-// TODO func for run emerge @module-rebuild
+pub fn rebuild_portage_modules(pretend: &PretendStatus) -> Result<(), Box<dyn std::error::Error>> {
+    // make install (with INSTALL_PATH env)
+    if pretend == &PretendStatus::Pretend {
+        println!("Pretending to run \'emerge @module-rebuild\'");
+    } else {
+        let output = Command::new("emerge").arg("@module-rebuild").output()?;
+        io::stderr().write_all(&output.stderr)?;
+        io::stdout().write_all(&output.stdout)?;
+    }
+    Ok(())
+}
 
-// TODO func for run grub mkconfig -o $install_path/grub/grub.cfg
+/// run grub mkconfig -o $install_path/grub/grub.cfg
+pub fn gen_grub_cfg(
+    pretend: &PretendStatus,
+    install_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // make install (with INSTALL_PATH env)
+    let grub_cfg_path = install_path.join("grub").join("grub.cfg");
+    if pretend == &PretendStatus::Pretend {
+        println!("Pretending to run \'grub-mkconfig -o {:?}\'", grub_cfg_path);
+    } else {
+        let output = Command::new("grub-mkconfig")
+            .arg("-o")
+            .arg(grub_cfg_path)
+            .output()?;
+        io::stderr().write_all(&output.stderr)?;
+        io::stdout().write_all(&output.stdout)?;
+    }
+    Ok(())
+}
 
-// TODO func for cleaning up old kernels
+//  cleaning up old kernels and their related installed items
+pub fn cleanup_old_installs(
+    pretend: &PretendStatus,
+    num_versions_to_keep: u32,
+    installed_kernels: &[InstalledKernel],
+) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO List kernels that are being removed
+    todo!("Kernel cleanup not yet implemented");
+}

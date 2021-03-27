@@ -32,12 +32,15 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
 * [x] Verions that are old shouldn't expect source dirs or module dirs with `.old` on them
 * update.rs 
     - [x] copy config
-    - [ ] building kernel
-    - [ ] gen grub cfg or run portage commands
+    - [x] building kernel
+    - [x] gen grub cfg or run portage commands
     - [ ] Logic for deleting old kernels and related files
     - [ ] tested
 ### Ideas
 * [ ] Allow hooks that can be ran after building the kernel
     - Used for running `emerge @preserved-rebuild`
+* [ ] Use program specific error class instead of `Box<dyn std::error::Error>`
+* [ ] Create command wrapper that allows for easier running of `pretend`
+* [ ] Add getter for InstalledKernel that returns paths without options if none are missing
 * [ ] Allow for a `keep` flag on `InstalledKernel`s so that certain kernels won't be removed
     - [ ] tested

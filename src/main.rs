@@ -1,5 +1,7 @@
 use std::{borrow::Borrow, path::Path};
 
+use update::PretendStatus;
+
 mod cli;
 mod conf;
 mod dir_search;
@@ -59,16 +61,16 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         true => PretendStatus::Pretend,
         false => PretendStatus::RunTheDamnThing,
     };
-    if !pretend && !user_is_root() {
+    if pretend == PretendStatus::RunTheDamnThing && !user_is_root() {
         return Err("User is not root and \'pretend\' isn\'t specified. Exiting...".into());
     }
 
     let config = conf::Config::find_in_fs()?;
 
     let trash_path = config.get_path("TrashPath")?;
-    let versions_to_keep = config.get_u32("VersionsToKeep")?;
+    let num_versions_to_keep = config.get_u32("VersionsToKeep")?;
     let regen_grub_cfg = config.get_bool("RegenerateGrubConfig")?;
-    let emerge_pres_rebuild = config.get_bool("EmergePreservedRebuild")?;
+    let rebuild_portage_modules = config.get_bool("EmergePreservedRebuild")?;
 
     let install_path = config.get_path("InstallPath")?;
     let module_path = config.get_path("KernelModulesPath")?;
@@ -84,13 +86,38 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    let newest_kernel = match installed_kernels.last() {
+        Some(i) => i,
+        None => return Err("No installed kernels found".into()),
+    };
+
     if parsed_results.flag_enabled("manual_edit") {
         println!("manual edit enabled");
     } else {
-        update::copy_config(pretend, &install_path, &installed_kernels)?;
+        update::copy_config(&pretend, &install_path, &newest_kernel)?;
     }
 
+    let src_path = match &newest_kernel.source_path {
+        Some(p) => p,
+        None => {
+            return Err(format!(
+                "Newest kernel {:?} is missing a source directory!",
+                newest_kernel
+            )
+            .into())
+        }
+    };
+    update::build_kernel(&pretend, &src_path, &install_path)?;
+
     // TODO Run more functions from update.rs once implemented
+    if rebuild_portage_modules {
+        update::rebuild_portage_modules(&pretend)?;
+    }
+    if regen_grub_cfg {
+        update::gen_grub_cfg(&pretend, &install_path)?;
+    }
+
+    update::cleanup_old_installs(&pretend, num_versions_to_keep, &installed_kernels)?;
 
     Ok(())
 }
