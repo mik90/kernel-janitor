@@ -1,13 +1,10 @@
-use std::{borrow::Borrow, path::Path};
-
-use update::PretendStatus;
-
 mod cli;
 mod conf;
 mod dir_search;
 mod kernel;
 mod update;
 mod utils;
+use update::PretendStatus;
 
 fn user_is_root() -> bool {
     std::process::id() == 0

@@ -1,9 +1,8 @@
 use crate::kernel::InstalledKernel;
-use std::io;
-use std::process::Command;
 use std::{
-    io::{stderr, Write},
+    io::{self, Write},
     path::Path,
+    process::Command,
 };
 
 #[derive(PartialEq, Eq)]

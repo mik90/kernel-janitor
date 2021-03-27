@@ -1,8 +1,8 @@
 use std::{
     cmp::Ordering,
-    collections::{hash_map, HashMap},
+    collections::HashMap,
     convert::TryFrom,
-    error, fmt, io,
+    fmt, io,
     option::Option,
     path::{Path, PathBuf},
 };
@@ -71,29 +71,6 @@ pub struct KernelSearch {
 }
 
 impl KernelVersion {
-    pub fn new(
-        major: u32,
-        minor: u32,
-        patch: u32,
-        release_candidate_num: Option<u32>,
-        is_old: bool,
-    ) -> KernelVersion {
-        KernelVersion {
-            major,
-            minor,
-            patch,
-            release_candidate_num,
-            is_old,
-        }
-    }
-    /// Returns major, minor, patch versions
-    pub fn version_triple(&self) -> (u32, u32, u32) {
-        (self.major, self.minor, self.patch)
-    }
-
-    pub fn release_candidate_num(&self) -> Option<u32> {
-        self.release_candidate_num
-    }
     pub fn is_old(&self) -> bool {
         self.is_old
     }
@@ -256,37 +233,6 @@ impl InstalledKernel {
             config_path: None,
             system_map_path: None,
         }
-    }
-
-    pub fn with_module_path(mut self, dir: PathBuf) -> InstalledKernel {
-        self.module_path = Some(dir);
-        self
-    }
-    pub fn with_vmlinuz_path(mut self, dir: PathBuf) -> InstalledKernel {
-        self.vmlinuz_path = Some(dir);
-        self
-    }
-    pub fn with_source_path(mut self, dir: PathBuf) -> InstalledKernel {
-        self.source_path = Some(dir);
-        self
-    }
-    pub fn with_config_path(mut self, dir: PathBuf) -> InstalledKernel {
-        self.config_path = Some(dir);
-        self
-    }
-    pub fn with_system_map_path(mut self, dir: PathBuf) -> InstalledKernel {
-        self.system_map_path = Some(dir);
-        self
-    }
-
-    /// True if any of the paths are empty (not found)
-    /// False if all paths are Some
-    pub fn files_missing(&self) -> bool {
-        self.module_path.is_none()
-            || self.vmlinuz_path.is_none()
-            || self.source_path.is_none()
-            || self.config_path.is_none()
-            || self.system_map_path.is_none()
     }
 }
 impl fmt::Display for InstalledKernel {
@@ -578,6 +524,63 @@ impl KernelSearch {
 mod tests {
     use super::*;
     use crate::utils::tests::*;
+    impl KernelVersion {
+        pub fn new(
+            major: u32,
+            minor: u32,
+            patch: u32,
+            release_candidate_num: Option<u32>,
+            is_old: bool,
+        ) -> KernelVersion {
+            KernelVersion {
+                major,
+                minor,
+                patch,
+                release_candidate_num,
+                is_old,
+            }
+        }
+        /// Returns major, minor, patch versions
+        pub fn version_triple(&self) -> (u32, u32, u32) {
+            (self.major, self.minor, self.patch)
+        }
+        pub fn release_candidate_num(&self) -> Option<u32> {
+            self.release_candidate_num
+        }
+    }
+
+    impl InstalledKernel {
+        pub fn with_module_path(mut self, dir: PathBuf) -> InstalledKernel {
+            self.module_path = Some(dir);
+            self
+        }
+        pub fn with_vmlinuz_path(mut self, dir: PathBuf) -> InstalledKernel {
+            self.vmlinuz_path = Some(dir);
+            self
+        }
+        pub fn with_source_path(mut self, dir: PathBuf) -> InstalledKernel {
+            self.source_path = Some(dir);
+            self
+        }
+        pub fn with_config_path(mut self, dir: PathBuf) -> InstalledKernel {
+            self.config_path = Some(dir);
+            self
+        }
+        pub fn with_system_map_path(mut self, dir: PathBuf) -> InstalledKernel {
+            self.system_map_path = Some(dir);
+            self
+        }
+
+        /// True if any of the paths are empty (not found)
+        /// False if all paths are Some
+        pub fn files_missing(&self) -> bool {
+            self.module_path.is_none()
+                || self.vmlinuz_path.is_none()
+                || self.source_path.is_none()
+                || self.config_path.is_none()
+                || self.system_map_path.is_none()
+        }
+    }
     #[test]
     fn create_kernel_version() {
         let ver = KernelVersion::try_from("linux-5.7.11-gentoo");
