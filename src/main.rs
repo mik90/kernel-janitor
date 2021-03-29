@@ -1,6 +1,5 @@
 mod cli;
 mod conf;
-mod dir_search;
 mod kernel;
 mod update;
 mod utils;

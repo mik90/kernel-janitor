@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{dir_search, update::PretendStatus};
+use crate::{update::PretendStatus, utils};
 
 /// A kernel version can be found as a config, vmlinuz binary, system map, or source directory.
 /// Format: SomeIgnoredValue-<major>.<minor>.<patch>-gentoo
@@ -213,7 +213,7 @@ impl fmt::Display for KernelVersion {
 
 impl InstalledItem {
     pub fn new(kind: InstalledItemKind, path: PathBuf) -> Result<InstalledItem, VersionParseError> {
-        let filename = dir_search::filename_from_path(&path).unwrap_or_default();
+        let filename = utils::paths::filename_from_path(&path).unwrap_or_default();
         let maybe_version = KernelVersion::try_from(filename);
         maybe_version.map(|version| InstalledItem {
             kind,
@@ -355,34 +355,34 @@ impl KernelSearch {
     fn find_all_installed_items(&self) -> io::Result<Vec<InstalledItem>> {
         // Search for vmlinuz
         let kernel_images: Vec<_> =
-            dir_search::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?
+            utils::paths::all_paths_with_prefix("vmlinuz-", &self.install_search_path)?
                 .into_iter()
                 .map(|path| (InstalledItemKind::KernelImage, path))
                 .collect();
 
         // Search for config
         let configs: Vec<_> =
-            dir_search::all_paths_with_prefix("config-", &self.install_search_path)?
+            utils::paths::all_paths_with_prefix("config-", &self.install_search_path)?
                 .into_iter()
                 .map(|path| (InstalledItemKind::Config, path))
                 .collect();
 
         // Search for system map
         let system_maps: Vec<_> =
-            dir_search::all_paths_with_prefix("System.map-", &self.install_search_path)?
+            utils::paths::all_paths_with_prefix("System.map-", &self.install_search_path)?
                 .into_iter()
                 .map(|path| (InstalledItemKind::SystemMap, path))
                 .collect();
 
         // Search for source dir
         let source_dirs: Vec<_> =
-            dir_search::all_paths_with_prefix("linux-", &self.source_search_path)?
+            utils::paths::all_paths_with_prefix("linux-", &self.source_search_path)?
                 .into_iter()
                 .map(|path| (InstalledItemKind::SourceDir, path))
                 .collect();
 
         // Search for module path
-        let module_dirs: Vec<_> = dir_search::all_paths(&self.module_search_path)?
+        let module_dirs: Vec<_> = utils::paths::all_paths(&self.module_search_path)?
             .into_iter()
             .map(|path| (InstalledItemKind::ModuleDir, path))
             .collect();
