@@ -127,9 +127,9 @@ impl Config {
     }
 
     // TODO use generics but they must be restricted
-    pub fn get_u32(&self, name: &str) -> Result<u32, Box<dyn error::Error>> {
+    pub fn get_usize(&self, name: &str) -> Result<usize, Box<dyn error::Error>> {
         match self.entries.get(name) {
-            Some(e) => e.value.parse::<u32>().map_err(|e| e.into()),
+            Some(e) => e.value.parse::<usize>().map_err(|e| e.into()),
             None => Err(format!("Config value with name {} was not found!", name).into()),
         }
     }
@@ -212,10 +212,10 @@ mod tests {
         assert!(path_value.is_ok());
         assert_eq!(path_value.unwrap(), PathBuf::from("/boot"));
 
-        let u32_value = conf.get_u32("VersionsToKeep");
-        println!("{:?}", u32_value);
-        assert!(u32_value.is_ok());
-        assert_eq!(u32_value.unwrap(), 3 as u32);
+        let usize_value = conf.get_usize("VersionsToKeep");
+        println!("{:?}", usize_value);
+        assert!(usize_value.is_ok());
+        assert_eq!(usize_value.unwrap(), 3 as usize);
 
         let bool_value = conf.get_bool("RegenerateGrubConfig");
         println!("{:?}", bool_value);

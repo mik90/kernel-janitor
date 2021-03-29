@@ -64,10 +64,15 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = conf::Config::find_in_fs()?;
 
-    let trash_path = config.get_path("TrashPath")?;
-    let num_versions_to_keep = config.get_u32("VersionsToKeep")?;
+    /*
+     * TODO move old files to trash instead of deleting them
+     * I may need to implement a `mv` that copies content and deletes the old ones.
+     * Either that or just use the `mv` command
+     */
+    let _ = config.get_path("TrashPath")?;
+    let num_versions_to_keep = config.get_usize("VersionsToKeep")?;
     let regen_grub_cfg = config.get_bool("RegenerateGrubConfig")?;
-    let rebuild_portage_modules = config.get_bool("EmergePreservedRebuild")?;
+    let rebuild_portage_modules = config.get_bool("RebuildPortageModules")?;
 
     let install_path = config.get_path("InstallPath")?;
     let module_path = config.get_path("KernelModulesPath")?;
@@ -114,7 +119,7 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         update::gen_grub_cfg(&pretend, &install_path)?;
     }
 
-    update::cleanup_old_installs(&pretend, num_versions_to_keep, &installed_kernels)?;
+    update::cleanup_old_installs(&pretend, num_versions_to_keep, installed_kernels)?;
 
     Ok(())
 }

@@ -156,9 +156,25 @@ pub fn gen_grub_cfg(
 //  cleaning up old kernels and their related installed items
 pub fn cleanup_old_installs(
     pretend: &PretendStatus,
-    num_versions_to_keep: u32,
-    installed_kernels: &[InstalledKernel],
-) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO List kernels that are being removed
-    todo!("Kernel cleanup not yet implemented");
+    num_versions_to_keep: usize,
+    installed_kernels: Vec<InstalledKernel>,
+) -> std::io::Result<()> {
+    if installed_kernels.len() < num_versions_to_keep {
+        let err = std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "Configured to delete {} versions but there are only {} present, skipping.",
+                num_versions_to_keep,
+                installed_kernels.len()
+            ),
+        );
+        return Err(err);
+    }
+
+    let removal_result: Result<_, _> = installed_kernels
+        .into_iter()
+        .take(num_versions_to_keep)
+        .map(|kernel| kernel.uninstall(pretend))
+        .collect();
+    removal_result
 }

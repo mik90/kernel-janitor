@@ -34,13 +34,12 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] copy config
     - [x] building kernel
     - [x] gen grub cfg or run portage commands
-    - [ ] Logic for deleting old kernels and related files
+    - [x] Logic for deleting old kernels and related files
     - [ ] tested
 ### Ideas
-* [ ] Allow hooks that can be ran after building the kernel
-    - Used for running `emerge @preserved-rebuild`
+* [ ] Allow for using trash-cli or just moving files to trash folder
 * [ ] Use program specific error class instead of `Box<dyn std::error::Error>`
-* [ ] Create command wrapper that allows for easier running of `pretend`
+* [ ] Create `Command` wrapper that allows for easier running of `pretend`
+* [ ] Create `move` func that can move directories or files. Either copy and remove the content
+      or use `mv` as a `Command`. Renaming won't work across mount points.
 * [ ] Add getter for InstalledKernel that returns paths without options if none are missing
-* [ ] Allow for a `keep` flag on `InstalledKernel`s so that certain kernels won't be removed
-    - [ ] tested

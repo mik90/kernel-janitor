@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::dir_search;
+use crate::{dir_search, update::PretendStatus};
 
 /// A kernel version can be found as a config, vmlinuz binary, system map, or source directory.
 /// Format: SomeIgnoredValue-<major>.<minor>.<patch>-gentoo
@@ -233,6 +233,57 @@ impl InstalledKernel {
             config_path: None,
             system_map_path: None,
         }
+    }
+
+    /// True if any of the paths are empty (not found)
+    /// False if all paths are Some
+    pub fn files_missing(&self) -> bool {
+        self.module_path.is_none()
+            || self.vmlinuz_path.is_none()
+            || self.source_path.is_none()
+            || self.config_path.is_none()
+            || self.system_map_path.is_none()
+    }
+
+    pub fn uninstall(self, pretend: &PretendStatus) -> io::Result<()> {
+        // Don't delete source and module dirs for old versions since they rely on non-old versions
+        println!("Deleting {:?}...", &self.version);
+        if self.files_missing() {
+            let err = std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Error: Trying to uninstall kernel without all of its files. Kernel: {:?}",
+                    self
+                ),
+            );
+            return Err(err);
+        }
+        let module_path = self.module_path.unwrap();
+        let source_path = self.source_path.unwrap();
+        let config_path = self.config_path.unwrap();
+        let kernel_image_path = self.vmlinuz_path.unwrap();
+        let system_map_path = self.system_map_path.unwrap();
+        if !self.version.is_old() {
+            if pretend == &PretendStatus::Pretend {
+                println!("Pretending to delete {:?}", module_path);
+                println!("Pretending to delete {:?}", source_path);
+            } else {
+                std::fs::remove_dir_all(module_path)?;
+                std::fs::remove_dir_all(source_path)?;
+            }
+        }
+
+        if pretend == &PretendStatus::Pretend {
+            println!("Pretending to delete {:?}", config_path);
+            println!("Pretending to delete {:?}", kernel_image_path);
+            println!("Pretending to delete {:?}", system_map_path);
+        } else {
+            std::fs::remove_file(config_path)?;
+            std::fs::remove_file(kernel_image_path)?;
+            std::fs::remove_file(system_map_path)?;
+        }
+
+        Ok(())
     }
 }
 impl fmt::Display for InstalledKernel {
@@ -569,16 +620,6 @@ mod tests {
         pub fn with_system_map_path(mut self, dir: PathBuf) -> InstalledKernel {
             self.system_map_path = Some(dir);
             self
-        }
-
-        /// True if any of the paths are empty (not found)
-        /// False if all paths are Some
-        pub fn files_missing(&self) -> bool {
-            self.module_path.is_none()
-                || self.vmlinuz_path.is_none()
-                || self.source_path.is_none()
-                || self.config_path.is_none()
-                || self.system_map_path.is_none()
         }
     }
     #[test]
