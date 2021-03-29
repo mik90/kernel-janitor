@@ -59,7 +59,7 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         false => PretendStatus::RunTheDamnThing,
     };
     if pretend == PretendStatus::RunTheDamnThing && !user_is_root() {
-        return Err("User is not root and \'pretend\' isn\'t specified. Exiting...".into());
+        return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
     }
 
     let config = conf::Config::find_in_fs()?;
@@ -111,10 +111,10 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
     };
     update::build_kernel(&pretend, &src_path, &install_path)?;
 
-    // TODO Run more functions from update.rs once implemented
     if rebuild_portage_modules {
         update::rebuild_portage_modules(&pretend)?;
     }
+
     if regen_grub_cfg {
         update::gen_grub_cfg(&pretend, &install_path)?;
     }

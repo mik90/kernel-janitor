@@ -36,6 +36,7 @@ pub fn copy_config(
                 println!("Pretending to copy from {:?} to {:?}", installed_config, to)
             }
             PretendStatus::RunTheDamnThing => {
+                println!("Copy {:?} to {:?}", installed_config, to);
                 let res = std::fs::copy(installed_config, to);
                 if res.is_err() {
                     return Err(res.unwrap_err().into());
