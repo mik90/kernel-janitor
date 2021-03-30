@@ -563,6 +563,7 @@ impl KernelSearch {
     }
 
     /// Actually run the search and return all of the found InstalledKernels
+    /// Oldest kernels are first, newest are last
     pub fn execute(&self) -> io::Result<Vec<InstalledKernel>> {
         let all_installed_items = self.find_all_installed_items()?;
 
@@ -620,6 +621,67 @@ mod tests {
         pub fn with_system_map_path(mut self, dir: PathBuf) -> InstalledKernel {
             self.system_map_path = Some(dir);
             self
+        }
+        pub fn dummy_install_old() -> InstalledKernel {
+            let kernel_image_path = get_test_install_pathbuf().join("vmlinuz-5.4.97-gentoo.old");
+            std::fs::File::create(&kernel_image_path).unwrap();
+            let system_map_path = get_test_install_pathbuf().join("System.map-5.4.97-gentoo.old");
+            std::fs::File::create(&system_map_path).unwrap();
+            let config_path = get_test_install_pathbuf().join("config-5.4.97-gentoo.old");
+            std::fs::File::create(&config_path).unwrap();
+
+            let module_path = get_test_module_pathbuf().join("5.4.97-gentoo");
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .create(&module_path)
+                .unwrap();
+
+            let src_path = get_test_src_pathbuf().join("linux-5.4.97-gentoo");
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .create(&src_path)
+                .unwrap();
+
+            let version = KernelVersion::try_from("config-5.4.97-gentoo.old").unwrap();
+            InstalledKernel {
+                version: version,
+                module_path: Some(PathBuf::from(module_path)),
+                source_path: Some(PathBuf::from(src_path)),
+                vmlinuz_path: Some(PathBuf::from(kernel_image_path)),
+                config_path: Some(PathBuf::from(config_path)),
+                system_map_path: Some(PathBuf::from(system_map_path)),
+            }
+        }
+
+        pub fn dummy_install() -> InstalledKernel {
+            let kernel_image_path = get_test_install_pathbuf().join("vmlinuz-5.4.97-gentoo");
+            std::fs::File::create(&kernel_image_path).unwrap();
+            let system_map_path = get_test_install_pathbuf().join("System.map-5.4.97-gentoo");
+            std::fs::File::create(&system_map_path).unwrap();
+            let config_path = get_test_install_pathbuf().join("config-5.4.97-gentoo");
+            std::fs::File::create(&config_path).unwrap();
+
+            let module_path = get_test_module_pathbuf().join("5.4.97-gentoo");
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .create(&module_path)
+                .unwrap();
+
+            let src_path = get_test_src_pathbuf().join("linux-5.4.97-gentoo");
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .create(&src_path)
+                .unwrap();
+
+            let version = KernelVersion::try_from("linux-5.4.97-gentoo").unwrap();
+            InstalledKernel {
+                version: version,
+                module_path: Some(PathBuf::from(module_path)),
+                source_path: Some(PathBuf::from(src_path)),
+                vmlinuz_path: Some(PathBuf::from(kernel_image_path)),
+                config_path: Some(PathBuf::from(config_path)),
+                system_map_path: Some(PathBuf::from(system_map_path)),
+            }
         }
     }
     #[test]
@@ -782,50 +844,12 @@ mod tests {
         cleanup_test_dir();
         init_test_dir();
 
-        let install_path = get_test_pathbuf();
-        let kernel_image_path = format!("{}/{}", get_test_path_string(), "vmlinuz-5.4.97-gentoo");
-        let res = std::fs::File::create(&kernel_image_path);
-        assert!(
-            res.is_ok(),
-            format!("Could not create {:?}", kernel_image_path)
-        );
-        let config_path = format!("{}/{}", get_test_path_string(), "config-5.4.97-gentoo");
-        let res = std::fs::File::create(&config_path);
-        assert!(res.is_ok(), format!("Could not create {:?}", config_path));
-        let system_map_path = format!("{}/{}", get_test_path_string(), "System.map-5.4.97-gentoo");
-        let res = std::fs::File::create(&system_map_path);
-        assert!(
-            res.is_ok(),
-            format!("Could not create {:?}", system_map_path)
-        );
-        let module_path = format!("{}/{}", get_test_path_string(), "modules");
-        let res = std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(&module_path);
-        assert!(res.is_ok(), format!("Could not create {:?}", module_path));
-        let installed_module_path = format!("{}/{}", module_path, "5.4.97-gentoo");
-        let res = std::fs::File::create(&installed_module_path);
-        assert!(
-            res.is_ok(),
-            format!("Could not create {:?}", installed_module_path)
-        );
+        let _ = InstalledKernel::dummy_install();
+        let install_path = get_test_install_pathbuf();
+        let module_path = get_test_module_pathbuf();
+        let src_path = get_test_src_pathbuf();
 
-        let src_path = format!("{}/{}", get_test_path_string(), "src");
-        let res = std::fs::DirBuilder::new().create(&src_path);
-        assert!(res.is_ok(), format!("Could not create {:?}", src_path));
-        let installed_source_path = format!("{}/{}", src_path, "linux-5.4.97-gentoo");
-        let res = std::fs::File::create(&installed_source_path);
-        assert!(
-            res.is_ok(),
-            format!("Could not create {:?}", installed_source_path)
-        );
-
-        let installed_kernels = KernelSearch::new(
-            &install_path,
-            &PathBuf::from(src_path),
-            &PathBuf::from(module_path),
-        )
-        .execute();
+        let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute();
 
         assert!(installed_kernels.is_ok());
         let installed_kernels = installed_kernels.unwrap();
@@ -840,41 +864,13 @@ mod tests {
         cleanup_test_dir();
         init_test_dir();
 
-        let install_path = get_test_pathbuf();
-        let kernel_image_path = format!("{}/{}", get_test_path_string(), "vmlinuz-5.4.97-gentoo");
-        std::fs::File::create(&kernel_image_path).unwrap();
-        let old_kernel_image_path =
-            format!("{}/{}", get_test_path_string(), "vmlinuz-5.4.97-gentoo.old");
-        std::fs::File::create(&old_kernel_image_path).unwrap();
+        let dummy_install = InstalledKernel::dummy_install();
+        let dummy_install_old = InstalledKernel::dummy_install_old();
+        let install_path = get_test_install_pathbuf();
+        let module_path = get_test_module_pathbuf();
+        let src_path = get_test_src_pathbuf();
 
-        let module_path = format!("{}/{}", get_test_path_string(), "modules");
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(&module_path)
-            .unwrap();
-        let installed_module_path = format!("{}/{}", module_path, "5.4.97-gentoo");
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(&installed_module_path)
-            .unwrap();
-
-        let src_path = format!("{}/{}", get_test_path_string(), "src");
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(&src_path)
-            .unwrap();
-        let installed_source_path = format!("{}/{}", src_path, "linux-5.4.97-gentoo");
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(&installed_source_path)
-            .unwrap();
-
-        let installed_kernels = KernelSearch::new(
-            &install_path,
-            &PathBuf::from(src_path),
-            &PathBuf::from(module_path),
-        )
-        .execute();
+        let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute();
 
         assert!(
             installed_kernels.is_ok(),
@@ -886,18 +882,21 @@ mod tests {
             2,
             "Only expected kernel versions 5.4.97 and 5.4.97.old"
         );
-        for k in installed_kernels {
-            println!("Kernel: {}", k);
-            assert!(k.module_path.is_some(), "expected module path to be found");
-            assert!(k.source_path.is_some(), "expected source path to be found");
-            assert_eq!(
-                k.module_path.unwrap(),
-                PathBuf::from(&installed_module_path)
-            );
-            assert_eq!(
-                k.source_path.unwrap(),
-                PathBuf::from(&installed_source_path)
-            );
-        }
+
+        // Check old kernel
+        println!("installed_kernels[0]: {}", installed_kernels[0]);
+        assert_eq!(
+            installed_kernels[0].module_path,
+            dummy_install_old.module_path
+        );
+        assert_eq!(
+            installed_kernels[0].source_path,
+            dummy_install_old.source_path
+        );
+
+        // Check non-old kernel
+        println!("installed_kernels[1]: {}", installed_kernels[1]);
+        assert_eq!(installed_kernels[1].module_path, dummy_install.module_path);
+        assert_eq!(installed_kernels[1].source_path, dummy_install.source_path);
     }
 }

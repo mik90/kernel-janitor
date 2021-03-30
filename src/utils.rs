@@ -50,7 +50,7 @@ pub mod tests {
 
     fn create_dummy_files() -> io::Result<()> {
         init_test_dir();
-        let test_dir = get_test_pathbuf();
+        let test_dir = get_test_install_pathbuf();
 
         let mut path_0 = test_dir.clone();
         path_0.push("old-file.txt");
@@ -73,7 +73,7 @@ pub mod tests {
         let res = create_dummy_files();
         assert!(res.is_ok());
 
-        let search_dir = get_test_pathbuf();
+        let search_dir = get_test_install_pathbuf();
         let res = all_paths_with_prefix("new", &search_dir);
         assert!(res.is_ok());
         assert_eq!(res.unwrap().len(), 1);
@@ -91,7 +91,7 @@ pub mod tests {
     }
 
     pub fn init_test_dir() {
-        let test_dir = get_test_pathbuf();
+        let test_dir = get_test_install_pathbuf();
         let res = fs::create_dir_all(&test_dir);
         assert!(
             res.is_ok(),
@@ -99,22 +99,40 @@ pub mod tests {
         );
     }
 
-    pub fn get_test_path_string() -> String {
+    pub fn get_test_install_path_string() -> String {
         let thread = std::thread::current();
         let thread_name = thread.name().unwrap_or("UnknownThreadName");
         let thread_name_cleaned = thread_name.to_string().replace(":", "_");
         format!("unit-test-temp/{}", thread_name_cleaned)
     }
 
-    pub fn get_test_pathbuf() -> PathBuf {
+    pub fn get_test_install_pathbuf() -> PathBuf {
+        PathBuf::from(get_test_install_path_string())
+    }
+
+    pub fn get_test_module_path_string() -> String {
         let thread = std::thread::current();
         let thread_name = thread.name().unwrap_or("UnknownThreadName");
         let thread_name_cleaned = thread_name.to_string().replace(":", "_");
-        PathBuf::from(format!("unit-test-temp/{}", thread_name_cleaned))
+        format!("unit-test-temp/{}/modules", thread_name_cleaned)
+    }
+
+    pub fn get_test_module_pathbuf() -> PathBuf {
+        PathBuf::from(get_test_module_path_string())
+    }
+
+    pub fn get_test_src_path_string() -> String {
+        let thread = std::thread::current();
+        let thread_name = thread.name().unwrap_or("UnknownThreadName");
+        let thread_name_cleaned = thread_name.to_string().replace(":", "_");
+        format!("unit-test-temp/{}/src", thread_name_cleaned)
+    }
+    pub fn get_test_src_pathbuf() -> PathBuf {
+        PathBuf::from(get_test_src_path_string())
     }
 
     pub fn cleanup_test_dir() {
-        let test_dir = get_test_pathbuf();
+        let test_dir = get_test_install_pathbuf();
         if !test_dir.exists() {
             return;
         }
