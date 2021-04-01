@@ -901,16 +901,12 @@ mod tests {
             .unwrap();
 
         let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute();
-
-        // With uninstalled build artfiacts, I need some way to determine what this kernel needs to be installed
-        assert!(
-            installed_kernels.is_ok(),
-            format!("{:?}", installed_kernels.unwrap_err())
-        );
+        assert!(installed_kernels.is_ok());
         let installed_kernels = installed_kernels.unwrap();
-        for k in installed_kernels {
+        for k in &installed_kernels {
             println!("Kernel {}", k);
         }
-        todo!("Test isn't finished yet");
+
+        assert_eq!(installed_kernels.len(), 2, "Expected to find two kernels!");
     }
 }
