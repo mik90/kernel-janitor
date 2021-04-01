@@ -57,9 +57,6 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         true => PretendStatus::Pretend,
         false => PretendStatus::RunTheDamnThing,
     };
-    if pretend == PretendStatus::RunTheDamnThing && !user_is_root() {
-        return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
-    }
 
     let config = conf::Config::find_in_fs()?;
 
@@ -85,6 +82,9 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  {}", k);
         }
         return Ok(());
+    }
+    if pretend == PretendStatus::RunTheDamnThing && !user_is_root() {
+        return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
     }
 
     let newest_kernel = match installed_kernels.last() {

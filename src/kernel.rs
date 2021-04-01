@@ -247,7 +247,6 @@ impl InstalledKernel {
 
     pub fn uninstall(self, pretend: &PretendStatus) -> io::Result<()> {
         // Don't delete source and module dirs for old versions since they rely on non-old versions
-        println!("Deleting {:?}...", &self.version);
         if self.files_missing() {
             let err = std::io::Error::new(
                 std::io::ErrorKind::Other,
