@@ -883,4 +883,35 @@ mod tests {
         assert_eq!(installed_kernels[1].module_path, dummy_install.module_path);
         assert_eq!(installed_kernels[1].source_path, dummy_install.source_path);
     }
+
+    #[test]
+    fn newly_downloaded_sources() {
+        cleanup_test_dir();
+        init_test_dir();
+
+        let _ = InstalledKernel::create_test_version("5.4.97", false);
+        let install_path = get_test_install_pathbuf();
+        let module_path = get_test_module_pathbuf();
+        let src_path = get_test_src_pathbuf();
+
+        // Only the sources are installed for this version
+        let new_installed_sources = get_test_src_pathbuf().join("linux-5.11.0-gentoo");
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .create(&new_installed_sources)
+            .unwrap();
+
+        let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute();
+
+        // With uninstalled build artfiacts, I need some way to determine what this kernel needs to be installed
+        assert!(
+            installed_kernels.is_ok(),
+            format!("{:?}", installed_kernels.unwrap_err())
+        );
+        let installed_kernels = installed_kernels.unwrap();
+        for k in installed_kernels {
+            println!("Kernel {}", k);
+        }
+        todo!("Test isn't finished yet");
+    }
 }
