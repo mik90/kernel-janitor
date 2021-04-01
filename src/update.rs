@@ -36,7 +36,7 @@ pub fn copy_config(
                 println!("Pretending to copy from {:?} to {:?}", installed_config, to)
             }
             PretendStatus::RunTheDamnThing => {
-                println!("Copy {:?} to {:?}", installed_config, to);
+                println!("Copying {:?} to {:?}", installed_config, to);
                 let res = std::fs::copy(installed_config, to);
                 if res.is_err() {
                     return Err(res.unwrap_err().into());
@@ -63,12 +63,16 @@ pub fn build_kernel(
     if pretend == &PretendStatus::Pretend {
         println!("Pretending to run \'make oldconfig\' in {:?}", src_dir);
     } else {
+        println!("Running \'make oldconfig\' in {:?}", src_dir);
         let output = Command::new("make")
             .arg("oldconfig")
             .current_dir(src_dir)
             .output()?;
         io::stderr().write_all(&output.stderr)?;
         io::stdout().write_all(&output.stdout)?;
+        if !output.status.success() {
+            return Err("Command failed".into());
+        }
     }
 
     // Number of processors
@@ -80,6 +84,7 @@ pub fn build_kernel(
     if pretend == &PretendStatus::Pretend {
         println!("Pretending to run \'make -j{}\' in {:?}", nproc, src_dir);
     } else {
+        println!("Running \'make -j{}\' in {:?}", nproc, src_dir);
         let output = Command::new("make")
             .arg("-j")
             .arg(nproc)
@@ -87,6 +92,9 @@ pub fn build_kernel(
             .output()?;
         io::stderr().write_all(&output.stderr)?;
         io::stdout().write_all(&output.stdout)?;
+        if !output.status.success() {
+            return Err("Command failed".into());
+        }
     }
 
     // make modules_install
@@ -96,12 +104,16 @@ pub fn build_kernel(
             src_dir
         );
     } else {
+        println!("Running \'make modules_install\' in {:?}", src_dir);
         let output = Command::new("make")
             .arg("modules_install")
             .current_dir(src_dir)
             .output()?;
         io::stderr().write_all(&output.stderr)?;
         io::stdout().write_all(&output.stdout)?;
+        if !output.status.success() {
+            return Err("Command failed".into());
+        }
     }
 
     // make install (with INSTALL_PATH env)
@@ -111,6 +123,10 @@ pub fn build_kernel(
             src_dir, install_path
         );
     } else {
+        println!(
+            "Running \'make install\' in {:?} with env INSTALL_PATH={:?}",
+            src_dir, install_path
+        );
         let output = Command::new("make")
             .arg("install")
             .current_dir(src_dir)
@@ -118,6 +134,9 @@ pub fn build_kernel(
             .output()?;
         io::stderr().write_all(&output.stderr)?;
         io::stdout().write_all(&output.stdout)?;
+        if !output.status.success() {
+            return Err("Command failed".into());
+        }
     }
     Ok(())
 }
@@ -127,9 +146,13 @@ pub fn rebuild_portage_modules(pretend: &PretendStatus) -> Result<(), Box<dyn st
     if pretend == &PretendStatus::Pretend {
         println!("Pretending to run \'emerge @module-rebuild\'");
     } else {
+        println!("Running \'emerge @module-rebuild\'");
         let output = Command::new("emerge").arg("@module-rebuild").output()?;
         io::stderr().write_all(&output.stderr)?;
         io::stdout().write_all(&output.stdout)?;
+        if !output.status.success() {
+            return Err("Command failed".into());
+        }
     }
     Ok(())
 }
@@ -144,12 +167,16 @@ pub fn gen_grub_cfg(
     if pretend == &PretendStatus::Pretend {
         println!("Pretending to run \'grub-mkconfig -o {:?}\'", grub_cfg_path);
     } else {
+        println!("Running \'grub-mkconfig -o {:?}\'", grub_cfg_path);
         let output = Command::new("grub-mkconfig")
             .arg("-o")
             .arg(grub_cfg_path)
             .output()?;
         io::stderr().write_all(&output.stderr)?;
         io::stdout().write_all(&output.stdout)?;
+        if !output.status.success() {
+            return Err("Command failed".into());
+        }
     }
     Ok(())
 }

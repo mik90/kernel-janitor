@@ -35,7 +35,10 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
     - [x] building kernel
     - [x] gen grub cfg or run portage commands
     - [x] Logic for deleting old kernels and related files
+    - [x] Check exit code of commands
     - [ ] tested
+* [ ] If the latest version only has a source directory, that's fine since it'll happen
+      whenever a new version is downloaded
 ### Ideas
 * [ ] Allow for using trash-cli or just moving files to trash folder
 * [ ] Use program specific error class instead of `Box<dyn std::error::Error>`
