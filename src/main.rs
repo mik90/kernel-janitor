@@ -77,9 +77,9 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         kernel::KernelSearch::new(&install_path, &src_path, &module_path).execute()?;
 
     if parsed_results.flag_enabled("list") {
-        println!("Listing installed kernels (oldest to newest)...");
+        println!("Listing installed kernels (oldest to newest)...\n");
         for k in installed_kernels {
-            println!("  {}", k);
+            println!("{}", k);
         }
         return Ok(());
     }

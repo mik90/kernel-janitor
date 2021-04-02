@@ -289,9 +289,9 @@ impl fmt::Display for InstalledKernel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Version: {}, \n
-               Binary path: {:?}, Config path: {:?}, System map path: {:?},\n
-               Source dir: {:?}, Module dir: {:?}",
+            "Version {}
+  Binary path: {:?}, Config path: {:?}, System map path: {:?},
+  Source path: {:?}, Module path: {:?}",
             self.version,
             self.vmlinuz_path,
             self.config_path,
@@ -304,18 +304,8 @@ impl fmt::Display for InstalledKernel {
 
 impl fmt::Debug for InstalledKernel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Version: {}, \n
-               Binary path: {:?}, Config path: {:?}, System map path: {:?},\n
-               Source dir: {:?}, Module dir: {:?}",
-            self.version,
-            self.vmlinuz_path,
-            self.config_path,
-            self.system_map_path,
-            self.source_path,
-            self.module_path
-        )
+        // Just use the Display formta
+        write!(f, "{}", &self)
     }
 }
 /// Order installed kernels by their version
