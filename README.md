@@ -5,6 +5,29 @@ Has no dependencies.
 I could use sys-kernel/genkernel but instead I rolled my own. Originally it was fairly easy to build/install/cleanup but then I wanted
 to automate more. I wrote a script in Python that became beefier and now I'm rewriting it in Rust.
 
+## Usage
+List installed kernels
+```bash
+user $ cargo run --release -- --list
+```
+
+Pretend to execute upgrade and clean (dry-run)
+```bash
+user $ cargo run --release -- --pretend
+```
+
+Run upgrade and clean (must be root)
+```bash
+root $ cargo run --release
+```
+
+Run upgrade and clean, skip copying of config in case manual edits were made.
+Expects an updated `.config` to exist in the kernel source directory
+```bash
+root $ cargo run --release --manual-edit
+```
+
+
 ### Tasklist
 * [x] Implement kernel version ordering
     - [x] tested
