@@ -290,8 +290,11 @@ impl fmt::Display for InstalledKernel {
         write!(
             f,
             "Version {}
-  Binary path: {:?}, Config path: {:?}, System map path: {:?},
-  Source path: {:?}, Module path: {:?}",
+  Binary path:     {:?}
+  Config path:     {:?}
+  System map path: {:?}
+  Source path:     {:?}
+  Module path:     {:?}",
             self.version,
             self.vmlinuz_path,
             self.config_path,

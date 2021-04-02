@@ -79,7 +79,7 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
     if parsed_results.flag_enabled("list") {
         println!("Listing installed kernels (oldest to newest)...\n");
         for k in installed_kernels {
-            println!("{}", k);
+            println!("{}\n", k);
         }
         return Ok(());
     }
