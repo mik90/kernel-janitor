@@ -1,8 +1,10 @@
 mod cli;
 mod conf;
+mod error;
 mod kernel;
 mod update;
 mod utils;
+use error::JanitorError;
 use update::PretendStatus;
 
 fn user_is_root() -> bool {
@@ -16,7 +18,7 @@ fn main() {
 }
 
 // Got the idea for `try_main` from https://github.com/benhoyt/countwords/blob/8553c8f600c40a4626e966bc7e7e804097e6e2f4/rust/simple/main.rs
-fn try_main() -> Result<(), Box<dyn std::error::Error>> {
+fn try_main() -> Result<(), JanitorError> {
     let parsed_results = cli::FlagParser::new()
         .with_flag(
             "manual_edit",

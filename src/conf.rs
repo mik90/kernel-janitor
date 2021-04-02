@@ -1,6 +1,6 @@
+use crate::error::JanitorError;
 use std::{
     collections::HashMap,
-    error,
     path::{Path, PathBuf},
 };
 
@@ -127,22 +127,25 @@ impl Config {
     }
 
     // TODO use generics but they must be restricted
-    pub fn get_usize(&self, name: &str) -> Result<usize, Box<dyn error::Error>> {
+    pub fn get_usize(&self, name: &str) -> Result<usize, JanitorError> {
         match self.entries.get(name) {
-            Some(e) => e.value.parse::<usize>().map_err(|e| e.into()),
+            Some(e) => e.value.parse::<usize>().map_err(|e| JanitorError::from(e)),
             None => Err(format!("Config value with name {} was not found!", name).into()),
         }
     }
-    pub fn get_bool(&self, name: &str) -> Result<bool, Box<dyn error::Error>> {
+    pub fn get_bool(&self, name: &str) -> Result<bool, JanitorError> {
         match self.entries.get(name) {
-            Some(e) => e.value.parse::<bool>().map_err(|e| e.into()),
+            Some(e) => e.value.parse::<bool>().map_err(|e| JanitorError::from(e)),
             None => Err(format!("Config value with name {} was not found!", name).into()),
         }
     }
-    pub fn get_path(&self, name: &str) -> Result<PathBuf, Box<dyn error::Error>> {
+    pub fn get_path(&self, name: &str) -> Result<PathBuf, JanitorError> {
         match self.entries.get(name) {
             Some(e) => Ok(PathBuf::from(e.value.clone())),
-            None => Err(format!("Config value with name {} was not found!", name).into()),
+            None => Err(JanitorError::from(format!(
+                "Config value with name {} was not found!",
+                name
+            ))),
         }
     }
 }

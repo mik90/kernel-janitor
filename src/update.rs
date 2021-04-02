@@ -1,4 +1,4 @@
-use crate::kernel::InstalledKernel;
+use crate::{error::JanitorError, kernel::InstalledKernel};
 use std::{
     io::{self, Write},
     path::Path,
@@ -15,15 +15,14 @@ pub fn copy_config(
     pretend: &PretendStatus,
     install_path: &Path,
     newest_kernel: &InstalledKernel,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), JanitorError> {
     let newest_src_path = match &newest_kernel.source_path {
         Some(p) => p,
         None => {
-            return Err(format!(
-                "Could not find a source directory for kernel version {:?}",
+            return Err(JanitorError::from(format!(
+                "Could not find a source directory for kernel version {}",
                 newest_kernel.version
-            )
-            .into())
+            )))
         }
     };
 
@@ -58,7 +57,7 @@ pub fn build_kernel(
     pretend: &PretendStatus,
     src_dir: &Path,
     install_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), JanitorError> {
     // make oldconfig
     if pretend == &PretendStatus::Pretend {
         println!("Pretending to run \'make oldconfig\' in {:?}", src_dir);
@@ -141,7 +140,7 @@ pub fn build_kernel(
     Ok(())
 }
 
-pub fn rebuild_portage_modules(pretend: &PretendStatus) -> Result<(), Box<dyn std::error::Error>> {
+pub fn rebuild_portage_modules(pretend: &PretendStatus) -> Result<(), JanitorError> {
     // make install (with INSTALL_PATH env)
     if pretend == &PretendStatus::Pretend {
         println!("Pretending to run \'emerge @module-rebuild\'");
@@ -158,10 +157,7 @@ pub fn rebuild_portage_modules(pretend: &PretendStatus) -> Result<(), Box<dyn st
 }
 
 /// run grub mkconfig -o $install_path/grub/grub.cfg
-pub fn gen_grub_cfg(
-    pretend: &PretendStatus,
-    install_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn gen_grub_cfg(pretend: &PretendStatus, install_path: &Path) -> Result<(), JanitorError> {
     // make install (with INSTALL_PATH env)
     let grub_cfg_path = install_path.join("grub").join("grub.cfg");
     if pretend == &PretendStatus::Pretend {
