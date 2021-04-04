@@ -188,7 +188,7 @@ pub fn cleanup_old_installs(
         let err = std::io::Error::new(
             std::io::ErrorKind::Other,
             format!(
-                "Configured to delete {} versions but there are only {} present, skipping.",
+                "Configured to delete {} versions but there are only {} present. Skipping cleanup.",
                 num_versions_to_keep,
                 installed_kernels.len()
             ),
