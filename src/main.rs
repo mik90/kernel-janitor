@@ -89,28 +89,44 @@ fn try_main() -> Result<(), JanitorError> {
         return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
     }
 
-    let newest_kernel = match installed_kernels.last() {
-        Some(i) => i,
-        None => return Err("No installed kernels found".into()),
+    // Grab the newest kernel that already has a config
+    // The last element is the newest kernel so search in reverse
+    let newest_built_kernel = match installed_kernels.iter().rfind(|k| k.config_path.is_some()) {
+        Some(k) => k,
+        None => {
+            return Err(JanitorError::from(format!(
+                "Could not find any kernels with an installed configuration file in {:?}",
+                install_path
+            )))
+        }
     };
 
     if parsed_results.flag_enabled("manual_edit") {
         println!("manual edit enabled");
     } else {
-        update::copy_config(&pretend, &install_path, &newest_kernel)?;
+        update::copy_config(&pretend, &install_path, &newest_built_kernel)?;
     }
 
-    let src_path = match &newest_kernel.source_path {
-        Some(p) => p,
+    // Nested matches can't be the right thing to do
+    let newest_source_dir = match installed_kernels.last() {
+        Some(newest_kernel) => match &newest_kernel.source_path {
+            Some(s) => s,
+            None => {
+                return Err(JanitorError::from(format!(
+                    "Kernel {} doesn't have a source directory in {:?}",
+                    newest_kernel.version, &install_path
+                )));
+            }
+        },
         None => {
-            return Err(format!(
-                "Newest kernel {:?} is missing a source directory!",
-                newest_kernel
-            )
-            .into())
+            return Err(JanitorError::from(format!(
+                "No installed kernels were found in {:?}",
+                &install_path
+            )));
         }
     };
-    update::build_kernel(&pretend, &src_path, &install_path)?;
+
+    update::build_kernel(&pretend, &newest_source_dir, &install_path)?;
 
     if rebuild_portage_modules {
         update::rebuild_portage_modules(&pretend)?;

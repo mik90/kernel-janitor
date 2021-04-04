@@ -11,23 +11,24 @@ pub enum PretendStatus {
     RunTheDamnThing,
 }
 
+/// Expects the newest kernel that has already been built
 pub fn copy_config(
     pretend: &PretendStatus,
     install_path: &Path,
-    newest_kernel: &InstalledKernel,
+    newest_built_kernel: &InstalledKernel,
 ) -> Result<(), JanitorError> {
-    let newest_src_path = match &newest_kernel.source_path {
+    let newest_src_path = match &newest_built_kernel.source_path {
         Some(p) => p,
         None => {
             return Err(JanitorError::from(format!(
                 "Could not find a source directory for kernel version {}",
-                newest_kernel.version
+                newest_built_kernel.version
             )))
         }
     };
 
     // Copy most recent kernel config over
-    if let Some(installed_config) = &newest_kernel.config_path {
+    if let Some(installed_config) = &newest_built_kernel.config_path {
         // Install to $newest_src_path/.config
         let to = Path::new(&newest_src_path).join(".config");
         match pretend {
@@ -45,7 +46,7 @@ pub fn copy_config(
     } else {
         return Err(format!(
             "Could not find a config file in {:?} for kernel version {:?}",
-            install_path, newest_kernel.version
+            install_path, newest_built_kernel.version
         )
         .into());
     };
