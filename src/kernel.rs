@@ -87,26 +87,30 @@ impl TryFrom<&str> for KernelVersion {
         };
 
         //  Skip the first item if the string doesn't start with a number
-        let (version_triple, release_candidate_num) = if first_char_is_num {
+        let (version_triple, rc_str) = if first_char_is_num {
             // Example modules dir:
-            //  5.7.11-rc10-gentoo
-            // -> ['5.7.11', 'rc10', 'gentoo']
+            //  5.7.11-gentoo-rc10
+            // -> ['5.7.11', 'gentoo' 'rc10']
             //        0        1         2
             let split_by_dash: Vec<&str> = raw_value.split('-').collect();
-            if split_by_dash.len() < 2 {
-                return Err(VersionParseError::from(raw_value));
+            match split_by_dash.len() {
+                0..=1 => return Err(VersionParseError::from(raw_value)),
+                2 => (split_by_dash[0], ""),
+                3 => (split_by_dash[0], split_by_dash[2]),
+                _ => return Err(VersionParseError::from(raw_value)),
             }
-            (split_by_dash[0], split_by_dash[1])
         } else {
             // Example linux src dir:
-            // linux-5.7.11-rc10-gentoo.old
-            // -> ['linux', '5.7.11', 'rc10', 'gentoo.old']
-            //        0        1         2          3
+            // linux-5.7.11-gentoo-rc10.old
+            // -> ['linux', '5.7.11', 'gentoo', 'rc10.old']
+            //        0        1          2           3
             let split_by_dash: Vec<&str> = raw_value.split('-').collect();
-            if split_by_dash.len() < 3 {
-                return Err(VersionParseError::from(raw_value));
+            match split_by_dash.len() {
+                0..=2 => return Err(VersionParseError::from(raw_value)),
+                3 => (split_by_dash[1], ""),
+                4 => (split_by_dash[1], split_by_dash[3]),
+                _ => return Err(VersionParseError::from(raw_value)),
             }
-            (split_by_dash[1], split_by_dash[2])
         };
 
         // Collect the first 3 items or return in error
@@ -125,9 +129,9 @@ impl TryFrom<&str> for KernelVersion {
         let is_old = raw_value.ends_with(".old");
 
         // release candidate
-        let release_candidate_num = release_candidate_num
-            .strip_prefix("rc")
-            .unwrap_or_default()
+        let release_candidate_num = rc_str
+            .trim_start_matches("r")
+            .trim_end_matches(".old")
             .parse::<u32>()
             .ok();
 
@@ -201,7 +205,7 @@ impl fmt::Display for KernelVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut postfix = String::new();
         if let Some(n) = self.release_candidate_num {
-            postfix.push_str("-rc");
+            postfix.push_str("-r");
             postfix.push_str(&n.to_string());
         }
         if self.is_old {
@@ -307,8 +311,21 @@ impl fmt::Display for InstalledKernel {
 
 impl fmt::Debug for InstalledKernel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Just use the Display formta
-        write!(f, "{}", &self)
+        write!(
+            f,
+            "Version {:?}
+  Binary path:     {:?}
+  Config path:     {:?}
+  System map path: {:?}
+  Source path:     {:?}
+  Module path:     {:?}",
+            self.version,
+            self.vmlinuz_path,
+            self.config_path,
+            self.system_map_path,
+            self.source_path,
+            self.module_path
+        )
     }
 }
 /// Order installed kernels by their version
@@ -683,16 +700,29 @@ mod tests {
     }
     #[test]
     fn create_kernel_version_rc() {
-        let ver = KernelVersion::try_from("linux-2.6.999-rc1234-gentoo.old");
+        let ver = KernelVersion::try_from("vmlinuz-5.11.8-gentoo-r1");
         assert!(ver.is_ok());
 
         let ver = ver.unwrap();
+        println!("KernelVersion: {:?}", ver);
+        assert_eq!(ver.version_triple(), (5, 11, 8));
+        assert_eq!(ver.is_old(), false);
+        assert!(ver.release_candidate_num().is_some());
+        assert_eq!(ver.release_candidate_num().unwrap(), 1);
+    }
+
+    #[test]
+    fn create_kernel_version_rc_old() {
+        let ver = KernelVersion::try_from("linux-2.6.999-gentoo-r1234.old");
+        assert!(ver.is_ok());
+
+        let ver = ver.unwrap();
+        println!("KernelVersion: {:?}", ver);
         assert_eq!(ver.version_triple(), (2, 6, 999));
         assert_eq!(ver.is_old(), true);
         assert!(ver.release_candidate_num().is_some());
         assert_eq!(ver.release_candidate_num().unwrap(), 1234);
     }
-
     #[test]
     fn kernel_not_equal() {
         let error_msg = "Could not construct test KernelVersion!";
@@ -755,25 +785,25 @@ mod tests {
         let error_msg = "Could not construct test KernelVersion!";
         let mut versions: Vec<KernelVersion> = vec![
             KernelVersion::try_from("linux-4.10.5-gentoo").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-3.10.0-gentoo").expect(error_msg),
             KernelVersion::try_from("linux-4.10.5-gentoo.old").expect(error_msg),
-            KernelVersion::try_from("linux-5.11.0-rc1-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-5.11.0-r1-gentoo").expect(error_msg),
             KernelVersion::try_from("linux-2.6.0-gentoo").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-rc8-gentoo").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-rc8-gentoo.old").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-rc1-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-r8-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-r8-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-r1-gentoo.old").expect(error_msg),
         ];
 
         // Ascending sort
         let sorted_versions: Vec<KernelVersion> = vec![
             KernelVersion::try_from("linux-2.6.0-gentoo").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-gentoo").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-rc1-gentoo.old").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-rc8-gentoo.old").expect(error_msg),
-            KernelVersion::try_from("linux-4.10.0-rc8-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-3.10.0-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-r1-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-r8-gentoo.old").expect(error_msg),
+            KernelVersion::try_from("linux-4.10.0-r8-gentoo").expect(error_msg),
             KernelVersion::try_from("linux-4.10.5-gentoo.old").expect(error_msg),
             KernelVersion::try_from("linux-4.10.5-gentoo").expect(error_msg),
-            KernelVersion::try_from("linux-5.11.0-rc1-gentoo").expect(error_msg),
+            KernelVersion::try_from("linux-5.11.0-r1-gentoo").expect(error_msg),
         ];
 
         assert_eq!(versions.len(), sorted_versions.len());
