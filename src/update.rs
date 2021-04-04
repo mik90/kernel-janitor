@@ -185,16 +185,11 @@ pub fn cleanup_old_installs(
     installed_kernels: Vec<InstalledKernel>,
 ) -> std::io::Result<()> {
     if installed_kernels.len() <= num_versions_to_keep {
-        // Not enough kernels to cleanup
-        let err = std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Configured to delete {} versions but there are only {} present. Skipping cleanup.",
-                num_versions_to_keep,
-                installed_kernels.len()
-            ),
-        );
-        Err(err)
+        Ok(println!(
+            "Configured to delete {} versions but there are only {} present. Skipping cleanup.",
+            num_versions_to_keep,
+            installed_kernels.len()
+        ))
     } else {
         // There's more installed kernels than there are to keep
         let num_version_to_delete = installed_kernels.len() - num_versions_to_keep;

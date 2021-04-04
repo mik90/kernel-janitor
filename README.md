@@ -1,6 +1,6 @@
 # kernel-janitor
 Helper for building, installing, and cleaning kernel installations. Specifically made to deal with Gentoo. 
-Has no dependencies.
+The only dependency is on the `libc` crate.
 
 I could use sys-kernel/genkernel but instead I rolled my own. Originally it was fairly easy to build/install/cleanup but then I wanted
 to automate more. I wrote a script in Python that became beefier and now I'm rewriting it in Rust.
@@ -62,11 +62,16 @@ root $ cargo run --release --manual-edit
     - [ ] tested
 * [x] Use program specific error class instead of `Box<dyn std::error::Error>`
     - using `error::JanitorError`
-* [ ] If the latest version only has a source directory, that's fine since it'll happen whenever a new version is downloaded
+* [x] If the latest version only has a source directory, that's fine since it'll happen whenever a new version is downloaded
     - is this still an issue?
+    - Seems fixed
+* [ ] Print subcommand output as it runs
+
 ### Ideas
 * [ ] Allow for using trash-cli or just moving files to trash folder
 * [ ] Create `Command` wrapper that allows for easier running of `pretend`
 * [ ] Create `move` func that can move directories or files. Either copy and remove the content
       or use `mv` as a `Command`. Renaming won't work across mount points.
 * [ ] Add getter for InstalledKernel that returns paths without options if none are missing
+* [ ] Grab `HOME` from environment variable, unsure why this wasn't workking
+* [ ] Deal with symlinks in conf file search

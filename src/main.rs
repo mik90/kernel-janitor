@@ -8,7 +8,7 @@ use error::JanitorError;
 use update::PretendStatus;
 
 fn user_is_root() -> bool {
-    std::process::id() == 0
+    unsafe { libc::getuid() == 0 }
 }
 fn main() {
     if let Err(err) = try_main() {

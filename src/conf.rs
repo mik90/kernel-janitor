@@ -112,7 +112,8 @@ impl Config {
         if close_conf.exists() {
             return Config::new(&close_conf);
         }
-        let config_home_conf = PathBuf::from("~/.config/kernel-janitor.conf");
+
+        let config_home_conf = PathBuf::from("/root/.config/kernel-janitor.conf");
         if config_home_conf.exists() {
             return Config::new(&config_home_conf);
         }
