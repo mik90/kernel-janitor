@@ -66,6 +66,8 @@ root $ cargo run --release --manual-edit
     - is this still an issue?
     - Seems fixed
 * [ ] Print subcommand output as it runs
+* [ ] Deal with symlinks in conf file search
+* [ ] Grab `HOME` from environment variable, unsure why this wasn't workking
 
 ### Ideas
 * [ ] Allow for using trash-cli or just moving files to trash folder
@@ -73,5 +75,3 @@ root $ cargo run --release --manual-edit
 * [ ] Create `move` func that can move directories or files. Either copy and remove the content
       or use `mv` as a `Command`. Renaming won't work across mount points.
 * [ ] Add getter for InstalledKernel that returns paths without options if none are missing
-* [ ] Grab `HOME` from environment variable, unsure why this wasn't workking
-* [ ] Deal with symlinks in conf file search

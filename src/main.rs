@@ -21,10 +21,10 @@ fn main() {
 fn try_main() -> Result<(), JanitorError> {
     let parsed_results = cli::FlagParser::new()
         .with_flag(
-            "manual_edit",
-            "-m",
-            "--manual-edit",
-            "Let the user manually copy over and edit the kernel configuration before building.",
+            "auto_copy_config",
+            "-a",
+            "--auto-copy",
+            "Newest installed config file will be copied to the newest installed source directory",
         )
         .with_flag(
             "clean_only",
@@ -101,10 +101,11 @@ fn try_main() -> Result<(), JanitorError> {
         }
     };
 
-    if parsed_results.flag_enabled("manual_edit") {
-        println!("manual edit enabled");
-    } else {
+    if parsed_results.flag_enabled("auto_copy_config") {
+        println!("Auto-copying config enabled");
         update::copy_config(&pretend, &install_path, &newest_built_kernel)?;
+    } else {
+        println!("Expecting a kernel config to be present in the newest kernel source directory");
     }
 
     // Nested matches can't be the right thing to do
