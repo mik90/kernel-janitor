@@ -67,7 +67,8 @@ root $ cargo run --release --manual-edit
     - Seems fixed
 * [ ] Print subcommand output as it runs
 * [ ] Deal with symlinks in conf file search
-* [ ] Grab `HOME` from environment variable, unsure why this wasn't workking
+* [ ] Grab `HOME` from environment variable, unsure why this wasn't working
+* [ ] Actions should be interactive by default
 
 ### Ideas
 * [ ] Allow for using trash-cli or just moving files to trash folder

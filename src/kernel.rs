@@ -877,10 +877,10 @@ mod tests {
         let src_path = get_test_src_pathbuf();
 
         let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute();
-
         assert!(
             installed_kernels.is_ok(),
-            format!("{:?}", installed_kernels.unwrap_err())
+            "{}",
+            installed_kernels.unwrap_err()
         );
         let installed_kernels = installed_kernels.unwrap();
         assert_eq!(
