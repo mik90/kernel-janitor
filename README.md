@@ -65,7 +65,7 @@ root $ cargo run --release --manual-edit
 * [x] If the latest version only has a source directory, that's fine since it'll happen whenever a new version is downloaded
     - is this still an issue?
     - Seems fixed
-* [x] Print subcommand output as it runs
+* [ ] Print subcommand output as it runs
 * [ ] Deal with symlinks in conf file search
 * [ ] Grab `HOME` from environment variable, unsure why this wasn't working
 * [ ] Actions should be interactive by default
