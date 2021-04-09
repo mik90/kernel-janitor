@@ -1,3 +1,7 @@
+pub fn user_is_root() -> bool {
+    unsafe { libc::getuid() == 0 }
+}
+
 pub mod paths {
     use std::{
         fs, io,
