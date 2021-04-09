@@ -1,5 +1,56 @@
+use std::{
+    io::{BufRead, BufReader},
+    process::Command,
+    thread,
+};
+
+use crate::{error::JanitorError, update::PretendStatus};
+
 pub fn user_is_root() -> bool {
     unsafe { libc::getuid() == 0 }
+}
+// Runs the command and prints both stdout/stderr to the console
+pub fn exec_and_print_command(
+    cmd: &mut Command,
+    cmd_desc: String,
+    pretend: &PretendStatus,
+) -> Result<(), JanitorError> {
+    if pretend == &PretendStatus::Pretend {
+        println!("Pretending to run {}", cmd_desc);
+        return Ok(());
+    }
+    println!("Running {}", cmd_desc);
+    let child = cmd
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+    let stdout = child.stdout.ok_or_else(|| {
+        JanitorError::from(format!(
+            "Could not capture standard output for {}",
+            cmd_desc
+        ))
+    })?;
+    let stderr = child.stderr.ok_or_else(|| {
+        JanitorError::from(format!("Could not capture standard error for {}", cmd_desc))
+    })?;
+
+    let out_thread = thread::spawn(move || {
+        let stdout_reader = BufReader::new(stdout);
+        stdout_reader
+            .lines()
+            .filter_map(Result::ok)
+            .for_each(|l| println!("stdout: {}", l));
+    });
+    let err_thread = thread::spawn(move || {
+        let stderr_reader = BufReader::new(stderr);
+        stderr_reader
+            .lines()
+            .filter_map(Result::ok)
+            .for_each(|l| println!("stderr: {}", l));
+    });
+    out_thread.join().expect("Could not join out_thread");
+    err_thread.join().expect("Could not join err_thread");
+    Ok(())
 }
 
 pub mod paths {
@@ -47,9 +98,11 @@ pub mod paths {
 pub mod tests {
 
     use super::paths::*;
+    use super::*;
     use std::{
         fs, io,
         path::{Path, PathBuf},
+        process::Command,
     };
 
     fn create_dummy_files() -> io::Result<()> {
@@ -65,33 +118,6 @@ pub mod tests {
         fs::write(path_1, "new-file")?;
 
         Ok(())
-    }
-    #[test]
-    fn test_setup_cleanup() {
-        init_test_dir();
-        cleanup_test_dir();
-    }
-    #[test]
-    fn find_entries() {
-        init_test_dir();
-        let res = create_dummy_files();
-        assert!(res.is_ok());
-
-        let search_dir = get_test_install_pathbuf();
-        let res = all_paths_with_prefix("new", &search_dir);
-        assert!(res.is_ok());
-        assert_eq!(res.unwrap().len(), 1);
-
-        cleanup_test_dir();
-    }
-
-    #[test]
-    fn test_filename_from_path() {
-        let path = Path::new("/tmp/some/path/a-filename.txt");
-        let filename = filename_from_path(path);
-        assert!(filename.is_some());
-        let filename = filename.unwrap();
-        assert_eq!(filename.as_str(), "a-filename.txt");
     }
 
     pub fn init_test_dir() {
@@ -157,5 +183,42 @@ pub mod tests {
                 println!("Unknown file type {:?}", path);
             }
         }
+    }
+    #[test]
+    fn test_setup_cleanup() {
+        init_test_dir();
+        cleanup_test_dir();
+    }
+    #[test]
+    fn find_entries() {
+        init_test_dir();
+        let res = create_dummy_files();
+        assert!(res.is_ok());
+
+        let search_dir = get_test_install_pathbuf();
+        let res = all_paths_with_prefix("new", &search_dir);
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().len(), 1);
+
+        cleanup_test_dir();
+    }
+
+    #[test]
+    fn test_filename_from_path() {
+        let path = Path::new("/tmp/some/path/a-filename.txt");
+        let filename = filename_from_path(path);
+        assert!(filename.is_some());
+        let filename = filename.unwrap();
+        assert_eq!(filename.as_str(), "a-filename.txt");
+    }
+
+    #[test]
+    fn test_exec_command() {
+        let res = exec_and_print_command(
+            Command::new("ls").arg("-l"),
+            "ls -l".to_string(),
+            &PretendStatus::Pretend,
+        );
+        assert!(res.is_ok(), res.unwrap_err());
     }
 }
