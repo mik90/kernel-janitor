@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'kernel-janitor'",
+            "name": "run -p",
             "cargo": {
                 "args": [
                     "build",
@@ -19,13 +19,13 @@
                     "kind": "bin"
                 }
             },
-            "args": ["--list"],
+            "args": ["--pretend"],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'kernel-janitor'",
+            "name": "unit tests",
             "cargo": {
                 "args": [
                     "test",

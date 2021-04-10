@@ -84,7 +84,7 @@ impl ConfigEntry {
 }
 
 impl Config {
-    pub fn new(path: &Path) -> Result<Config, std::io::Error> {
+    pub fn new(path: &Path) -> Result<Config, JanitorError> {
         let contents = std::fs::read(path)?;
 
         let file_str = String::from_utf8_lossy(&contents);
@@ -99,7 +99,7 @@ impl Config {
                     ()
                 }
                 ConfigLineKind::ParseError(e) => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other, e))
+                    return Err(JanitorError::from(e));
                 }
                 ConfigLineKind::Comment => (),
             }
@@ -107,24 +107,36 @@ impl Config {
         Ok(Config { entries })
     }
 
-    pub fn find_in_fs() -> Result<Config, std::io::Error> {
-        let close_conf = PathBuf::from("./kernel-janitor.conf");
-        if close_conf.exists() {
-            return Config::new(&close_conf);
+    pub fn find_in_fs() -> Result<Config, JanitorError> {
+        let local_conf = PathBuf::from("./kernel-janitor.conf");
+        if local_conf.exists() {
+            println!("Found config at {:?}", &local_conf);
+            return Config::new(&local_conf);
         }
 
-        let config_home_conf = PathBuf::from("/root/.config/kernel-janitor.conf");
-        if config_home_conf.exists() {
-            return Config::new(&config_home_conf);
+        let home_dir =
+            std::env::var_os("HOME").ok_or("No \'HOME\' environment variable was found")?;
+        let home_conf_path = PathBuf::from(format!(
+            "{}/.config/kernel-janitor.conf",
+            home_dir.to_string_lossy()
+        ));
+        // TODO only conditionally resolve symlinksa
+        // TODO Print out the symlink resolution
+        let home_conf = std::fs::read_link(&home_conf_path).map_err(|_| {
+            JanitorError::from(format!(
+                "No config file found at {:?} or at {:?}",
+                home_conf_path, local_conf
+            ))
+        })?;
+        if home_conf.exists() {
+            println!("Found config at {:?}", &home_conf);
+            return Config::new(&home_conf);
         }
 
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "No config files found at {:?} or {:?}",
-                close_conf, config_home_conf
-            ),
-        ))
+        Err(JanitorError::from(format!(
+            "No config files found at {:?} or {:?}",
+            local_conf, home_conf
+        )))
     }
 
     // TODO use generics but they must be restricted
@@ -236,5 +248,11 @@ mod tests {
 
         let versions_to_keep = conf.get_bool("VersionsToKeep");
         assert!(versions_to_keep.is_err());
+    }
+    #[test]
+    fn get_home_var() {
+        let home_dir = std::env::var_os("HOME");
+        println!("Home dir: {:?}", home_dir);
+        assert!(home_dir.is_some());
     }
 }

@@ -39,7 +39,7 @@ pub fn exec_and_print_command(
         stdout_reader
             .lines()
             .filter_map(Result::ok)
-            .for_each(|l| println!("stdout: {}", l));
+            .for_each(|l| println!("{}", l));
     });
     let err_thread = thread::spawn(move || {
         let stderr_reader = BufReader::new(stderr);
@@ -126,33 +126,29 @@ pub mod tests {
         assert!(res.is_ok(), "Could not init test dir {:?}", test_dir);
     }
 
-    pub fn get_test_install_path_string() -> String {
+    pub fn get_test_dir_string() -> String {
         let thread = std::thread::current();
         let thread_name = thread.name().unwrap_or("UnknownThreadName");
-        let thread_name_cleaned = thread_name.to_string().replace(":", "_");
+        let thread_name_cleaned = thread_name.to_string().replace("::", "_");
         format!("unit-test-temp/{}", thread_name_cleaned)
     }
 
+    pub fn get_test_install_path_string() -> String {
+        format!("./{}", get_test_dir_string())
+    }
     pub fn get_test_install_pathbuf() -> PathBuf {
         PathBuf::from(get_test_install_path_string())
     }
 
     pub fn get_test_module_path_string() -> String {
-        let thread = std::thread::current();
-        let thread_name = thread.name().unwrap_or("UnknownThreadName");
-        let thread_name_cleaned = thread_name.to_string().replace(":", "_");
-        format!("unit-test-temp/{}/modules", thread_name_cleaned)
+        format!("./{}/modules", get_test_dir_string())
     }
-
     pub fn get_test_module_pathbuf() -> PathBuf {
         PathBuf::from(get_test_module_path_string())
     }
 
     pub fn get_test_src_path_string() -> String {
-        let thread = std::thread::current();
-        let thread_name = thread.name().unwrap_or("UnknownThreadName");
-        let thread_name_cleaned = thread_name.to_string().replace(":", "_");
-        format!("unit-test-temp/{}/src", thread_name_cleaned)
+        format!("./{}/modules", get_test_dir_string())
     }
     pub fn get_test_src_pathbuf() -> PathBuf {
         PathBuf::from(get_test_src_path_string())
@@ -213,11 +209,30 @@ pub mod tests {
     }
 
     #[test]
-    fn test_exec_command() {
+    fn test_pretend_exec_command() {
         let res = exec_and_print_command(
             Command::new("ls").arg("-l"),
             "ls -l".to_string(),
             &PretendStatus::Pretend,
+        );
+        assert!(res.is_ok(), res.unwrap_err());
+    }
+    #[test]
+    fn test_exec_command() {
+        let res = exec_and_print_command(
+            Command::new("ls").arg("-l"),
+            "ls -l".to_string(),
+            &PretendStatus::RunTheDamnThing,
+        );
+        assert!(res.is_ok(), res.unwrap_err());
+    }
+
+    #[test]
+    fn test_exec_command_err() {
+        let res = exec_and_print_command(
+            Command::new("ls").arg("./IamNotaPathPleaseDontFindMe"),
+            "ls ./unit-test-temp/iamnotapathpleasedontfindme".to_string(),
+            &PretendStatus::RunTheDamnThing,
         );
         assert!(res.is_ok(), res.unwrap_err());
     }

@@ -60,19 +60,21 @@ root $ cargo run --release --manual-edit
     - [x] Logic for deleting old kernels and related files
     - [x] Check exit code of commands
     - [ ] tested
+        - only tested manually so far, no unit tests
 * [x] Use program specific error class instead of `Box<dyn std::error::Error>`
     - using `error::JanitorError`
 * [x] If the latest version only has a source directory, that's fine since it'll happen whenever a new version is downloaded
     - is this still an issue?
     - Seems fixed
-* [ ] Print subcommand output as it runs
-* [ ] Deal with symlinks in conf file search
-* [ ] Grab `HOME` from environment variable, unsure why this wasn't working
+* [x] Print subcommand output as it runs
+* [x] Create `Command` wrapper that allows for easier running of `pretend`
+* [x] Deal with symlinks in conf file search
+* [x] Grab `HOME` from environment variable, unsure why this wasn't working
 * [ ] Actions should be interactive by default
+* [ ] Deal with non-symlinks in ~/.config file search
 
 ### Ideas
 * [ ] Allow for using trash-cli or just moving files to trash folder
-* [ ] Create `Command` wrapper that allows for easier running of `pretend`
 * [ ] Create `move` func that can move directories or files. Either copy and remove the content
       or use `mv` as a `Command`. Renaming won't work across mount points.
 * [ ] Add getter for InstalledKernel that returns paths without options if none are missing
