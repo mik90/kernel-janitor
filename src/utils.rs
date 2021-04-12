@@ -215,7 +215,7 @@ pub mod tests {
             "ls -l".to_string(),
             &PretendStatus::Pretend,
         );
-        assert!(res.is_ok(), res.unwrap_err());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
     }
     #[test]
     fn test_exec_command() {
@@ -224,7 +224,7 @@ pub mod tests {
             "ls -l".to_string(),
             &PretendStatus::RunTheDamnThing,
         );
-        assert!(res.is_ok(), res.unwrap_err());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 
     #[test]
@@ -234,6 +234,6 @@ pub mod tests {
             "ls ./unit-test-temp/iamnotapathpleasedontfindme".to_string(),
             &PretendStatus::RunTheDamnThing,
         );
-        assert!(res.is_ok(), res.unwrap_err());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 }
