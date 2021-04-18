@@ -71,6 +71,7 @@ root $ cargo run --release --manual-edit
 * [x] Deal with symlinks in conf file search
 * [x] Grab `HOME` from environment variable, unsure why this wasn't working
 * [ ] Actions should be interactive by default
+* [ ] Allow deletion of specifc kernel versions
 * [ ] Deal with non-symlinks in ~/.config file search
 
 ### Ideas
