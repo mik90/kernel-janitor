@@ -6,9 +6,19 @@ use std::{
 
 use crate::{error::JanitorError, update::PretendStatus};
 
-pub fn user_is_root() -> bool {
-    unsafe { libc::getuid() == 0 }
+pub fn user_is_root() -> Result<bool, JanitorError> {
+    get_euid().map(|euid| euid == 0)
 }
+
+pub fn get_euid() -> Result<usize, JanitorError> {
+    let output = Command::new("id").arg("-u").output()?;
+    let utf8_str = String::from_utf8_lossy(&output.stdout);
+    utf8_str
+        .trim()
+        .parse::<usize>()
+        .map_err(|_| JanitorError::from(format!("Could not parse {} as usize", utf8_str)))
+}
+
 // Runs the command and prints both stdout/stderr to the console
 pub fn exec_and_print_command(
     cmd: &mut Command,
@@ -235,5 +245,10 @@ pub mod tests {
             &PretendStatus::RunTheDamnThing,
         );
         assert!(res.is_ok(), "{}", res.unwrap_err());
+    }
+    #[test]
+    fn test_get_euid() {
+        let euid = get_euid();
+        assert!(euid.is_ok(), "{}", euid.unwrap_err());
     }
 }

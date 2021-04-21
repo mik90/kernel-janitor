@@ -81,7 +81,7 @@ fn try_main() -> Result<(), JanitorError> {
         }
         return Ok(());
     }
-    if pretend == PretendStatus::RunTheDamnThing && !utils::user_is_root() {
+    if pretend == PretendStatus::RunTheDamnThing && !utils::user_is_root()? {
         return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
     }
 
