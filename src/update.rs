@@ -6,10 +6,19 @@ pub enum PretendStatus {
     Pretend,
     RunTheDamnThing,
 }
+#[derive(PartialEq, Eq)]
+pub enum InteractiveStatus {
+    On,
+    Off,
+}
+pub struct RunCmdConfig {
+    pub pretend: PretendStatus,
+    pub interactive: InteractiveStatus,
+}
 
 /// Expects the newest kernel that has already been built
 pub fn copy_config(
-    pretend: &PretendStatus,
+    config: &RunCmdConfig,
     install_path: &Path,
     newest_built_kernel: &InstalledKernel,
 ) -> Result<(), JanitorError> {
@@ -27,7 +36,7 @@ pub fn copy_config(
     if let Some(installed_config) = &newest_built_kernel.config_path {
         // Install to $newest_src_path/.config
         let to = Path::new(&newest_src_path).join(".config");
-        match pretend {
+        match &config.pretend {
             PretendStatus::Pretend => {
                 println!("Pretending to copy from {:?} to {:?}", installed_config, to)
             }
@@ -51,7 +60,7 @@ pub fn copy_config(
 }
 
 pub fn build_kernel(
-    pretend: &PretendStatus,
+    config: &RunCmdConfig,
     src_dir: &Path,
     install_path: &Path,
 ) -> Result<(), JanitorError> {
@@ -60,7 +69,7 @@ pub fn build_kernel(
             .arg("olddefconfig")
             .current_dir(src_dir),
         format!("\'make olddefconfig\' in {:?}", src_dir),
-        pretend,
+        &config.pretend,
     )?;
 
     // Number of processors
@@ -75,7 +84,7 @@ pub fn build_kernel(
             .arg(nproc)
             .current_dir(src_dir),
         format!("\'make -j{}\' in {:?}", nproc, src_dir),
-        pretend,
+        &config.pretend,
     )?;
 
     // make modules_install
@@ -84,7 +93,7 @@ pub fn build_kernel(
             .arg("modules_install")
             .current_dir(src_dir),
         format!("\'make modules_install\' in {:?}", src_dir),
-        pretend,
+        &config.pretend,
     )?;
 
     // make install (with INSTALL_PATH env)
@@ -97,35 +106,35 @@ pub fn build_kernel(
             "\'make install\' in {:?} with env INSTALL_PATH={:?}",
             src_dir, install_path
         ),
-        pretend,
+        &config.pretend,
     )?;
     Ok(())
 }
 
-pub fn rebuild_portage_modules(pretend: &PretendStatus) -> Result<(), JanitorError> {
+pub fn rebuild_portage_modules(config: &RunCmdConfig) -> Result<(), JanitorError> {
     // emerge @module-rebuild
     utils::exec_and_print_command(
         Command::new("emerge").arg("@module-rebuild"),
         format!("\'emerge @module-rebuild\'"),
-        pretend,
+        &config.pretend,
     )?;
     Ok(())
 }
 
-pub fn gen_grub_cfg(pretend: &PretendStatus, install_path: &Path) -> Result<(), JanitorError> {
+pub fn gen_grub_cfg(config: &RunCmdConfig, install_path: &Path) -> Result<(), JanitorError> {
     // grub-mkconfig -o $install_path/grub/grub.cfg
     let grub_cfg_path = install_path.join("grub").join("grub.cfg");
     utils::exec_and_print_command(
         Command::new("grub-mkconfig").arg("-o").arg(&grub_cfg_path),
         format!("\'grub-mkconfig -o {:?}\'", grub_cfg_path),
-        pretend,
+        &config.pretend,
     )?;
     Ok(())
 }
 
 //  cleaning up old kernels and their related installed items
 pub fn cleanup_old_installs(
-    pretend: &PretendStatus,
+    config: &RunCmdConfig,
     num_versions_to_keep: usize,
     installed_kernels: Vec<InstalledKernel>,
 ) -> std::io::Result<()> {
@@ -142,7 +151,7 @@ pub fn cleanup_old_installs(
         let removal_result: Result<_, _> = installed_kernels
             .into_iter()
             .take(num_versions_to_delete)
-            .map(|kernel| kernel.uninstall(pretend))
+            .map(|kernel| kernel.uninstall(&config.pretend))
             .collect();
         removal_result
     }

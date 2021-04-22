@@ -5,7 +5,7 @@ mod kernel;
 mod update;
 mod utils;
 use error::JanitorError;
-use update::PretendStatus;
+use update::{InteractiveStatus, PretendStatus};
 fn main() {
     if let Err(err) = try_main() {
         eprintln!("{}", err);
@@ -27,6 +27,12 @@ fn try_main() -> Result<(), JanitorError> {
             "-c",
             "--clean-only",
             "Clean up the install, source, and module directories then exit",
+        )
+        .with_flag(
+            "interactive",
+            "-i",
+            "--interactive",
+            "Run the commands interactively",
         )
         .with_flag(
             "list",
@@ -54,6 +60,11 @@ fn try_main() -> Result<(), JanitorError> {
     let pretend = match parsed_results.flag_enabled("pretend") {
         true => PretendStatus::Pretend,
         false => PretendStatus::RunTheDamnThing,
+    };
+
+    let interactive = match parsed_results.flag_enabled("interactive") {
+        true => InteractiveStatus::On,
+        false => InteractiveStatus::Off,
     };
 
     let config = conf::Config::find_in_fs()?;
@@ -97,9 +108,14 @@ fn try_main() -> Result<(), JanitorError> {
         }
     };
 
+    let cmd_config = update::RunCmdConfig {
+        pretend,
+        interactive,
+    };
+
     if parsed_results.flag_enabled("auto_copy_config") {
         println!("Auto-copying config enabled");
-        update::copy_config(&pretend, &install_path, &newest_built_kernel)?;
+        update::copy_config(&cmd_config, &install_path, &newest_built_kernel)?;
     } else {
         println!("Expecting a kernel config to be present in the newest kernel source directory");
     }
@@ -123,17 +139,17 @@ fn try_main() -> Result<(), JanitorError> {
         }
     };
 
-    update::build_kernel(&pretend, &newest_source_dir, &install_path)?;
+    update::build_kernel(&cmd_config, &newest_source_dir, &install_path)?;
 
     if rebuild_portage_modules {
-        update::rebuild_portage_modules(&pretend)?;
+        update::rebuild_portage_modules(&cmd_config)?;
     }
 
     if regen_grub_cfg {
-        update::gen_grub_cfg(&pretend, &install_path)?;
+        update::gen_grub_cfg(&cmd_config, &install_path)?;
     }
 
-    update::cleanup_old_installs(&pretend, num_versions_to_keep, installed_kernels)?;
+    update::cleanup_old_installs(&cmd_config, num_versions_to_keep, installed_kernels)?;
 
     Ok(())
 }
