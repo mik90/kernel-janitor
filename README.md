@@ -70,7 +70,10 @@ root $ cargo run --release --manual-edit
 * [x] Create `Command` wrapper that allows for easier running of `pretend`
 * [x] Deal with symlinks in conf file search
 * [x] Grab `HOME` from environment variable, unsure why this wasn't working
-* [ ] Actions should be interactive by default
+* [x] Actions should be optionally interactive
+    - [ ] test
+* [ ] Create macro for making a JanitorError with formatted input
+    - a wrapper for `format!`
 * [ ] Allow deletion of specifc kernel versions
 * [ ] Deal with non-symlinks in ~/.config file search
 

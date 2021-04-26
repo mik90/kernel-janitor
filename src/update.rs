@@ -36,12 +36,14 @@ pub fn copy_config(
     if let Some(installed_config) = &newest_built_kernel.config_path {
         // Install to $newest_src_path/.config
         let to = Path::new(&newest_src_path).join(".config");
+        let cmd_desc = format!("copy from {:?} to {:?}", installed_config, to);
         match &config.pretend {
             PretendStatus::Pretend => {
-                println!("Pretending to copy from {:?} to {:?}", installed_config, to)
+                println!("Pretending to {}", &cmd_desc);
             }
             PretendStatus::RunTheDamnThing => {
-                println!("Copying {:?} to {:?}", installed_config, to);
+                utils::maybe_prompt_for_confirmation(config, &cmd_desc)?;
+                println!("Running {}", cmd_desc);
                 let res = std::fs::copy(installed_config, to);
                 if res.is_err() {
                     return Err(res.unwrap_err().into());
@@ -69,7 +71,7 @@ pub fn build_kernel(
             .arg("olddefconfig")
             .current_dir(src_dir),
         format!("\'make olddefconfig\' in {:?}", src_dir),
-        &config.pretend,
+        &config,
     )?;
 
     // Number of processors
@@ -84,7 +86,7 @@ pub fn build_kernel(
             .arg(nproc)
             .current_dir(src_dir),
         format!("\'make -j{}\' in {:?}", nproc, src_dir),
-        &config.pretend,
+        &config,
     )?;
 
     // make modules_install
@@ -93,7 +95,7 @@ pub fn build_kernel(
             .arg("modules_install")
             .current_dir(src_dir),
         format!("\'make modules_install\' in {:?}", src_dir),
-        &config.pretend,
+        &config,
     )?;
 
     // make install (with INSTALL_PATH env)
@@ -106,7 +108,7 @@ pub fn build_kernel(
             "\'make install\' in {:?} with env INSTALL_PATH={:?}",
             src_dir, install_path
         ),
-        &config.pretend,
+        &config,
     )?;
     Ok(())
 }
@@ -116,7 +118,7 @@ pub fn rebuild_portage_modules(config: &RunCmdConfig) -> Result<(), JanitorError
     utils::exec_and_print_command(
         Command::new("emerge").arg("@module-rebuild"),
         format!("\'emerge @module-rebuild\'"),
-        &config.pretend,
+        &config,
     )?;
     Ok(())
 }
@@ -127,7 +129,7 @@ pub fn gen_grub_cfg(config: &RunCmdConfig, install_path: &Path) -> Result<(), Ja
     utils::exec_and_print_command(
         Command::new("grub-mkconfig").arg("-o").arg(&grub_cfg_path),
         format!("\'grub-mkconfig -o {:?}\'", grub_cfg_path),
-        &config.pretend,
+        &config,
     )?;
     Ok(())
 }

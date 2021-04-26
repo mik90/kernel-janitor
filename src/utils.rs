@@ -1,10 +1,13 @@
 use std::{
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     process::Command,
     thread,
 };
 
-use crate::{error::JanitorError, update::PretendStatus};
+use crate::{
+    error::JanitorError,
+    update::{InteractiveStatus, PretendStatus, RunCmdConfig},
+};
 
 pub fn user_is_root() -> Result<bool, JanitorError> {
     get_euid().map(|euid| euid == 0)
@@ -19,16 +22,40 @@ pub fn get_euid() -> Result<usize, JanitorError> {
         .map_err(|_| JanitorError::from(format!("Could not parse {} as usize", utf8_str)))
 }
 
+pub fn maybe_prompt_for_confirmation(
+    config: &RunCmdConfig,
+    cmd_desc: &str,
+) -> Result<(), JanitorError> {
+    if &config.interactive == &InteractiveStatus::Off {
+        return Ok(());
+    }
+    // Keep asking the user for input until they send something normal
+    loop {
+        println!("{}? (y/n)", cmd_desc);
+        let mut stdin = std::io::stdin();
+        let mut buf = String::new();
+        stdin.read_to_string(&mut buf)?;
+        let buf = buf.to_ascii_lowercase();
+        if buf.starts_with("y") {
+            return Ok(());
+        } else if buf.starts_with("n") {
+            return Err(JanitorError::from("Command declined"));
+        }
+        println!("Could not understand {}", buf);
+    }
+}
+
 // Runs the command and prints both stdout/stderr to the console
 pub fn exec_and_print_command(
     cmd: &mut Command,
     cmd_desc: String,
-    pretend: &PretendStatus,
+    cmd_config: &RunCmdConfig,
 ) -> Result<(), JanitorError> {
-    if pretend == &PretendStatus::Pretend {
+    if &cmd_config.pretend == &PretendStatus::Pretend {
         println!("Pretending to run {}", cmd_desc);
         return Ok(());
     }
+    maybe_prompt_for_confirmation(&cmd_config, &cmd_desc)?;
     println!("Running {}", cmd_desc);
     let child = cmd
         .stdout(std::process::Stdio::piped())
@@ -109,6 +136,7 @@ pub mod tests {
 
     use super::paths::*;
     use super::*;
+    use crate::update::*;
     use std::{
         fs, io,
         path::{Path, PathBuf},
@@ -220,29 +248,33 @@ pub mod tests {
 
     #[test]
     fn test_pretend_exec_command() {
-        let res = exec_and_print_command(
-            Command::new("ls").arg("-l"),
-            "ls -l".to_string(),
-            &PretendStatus::Pretend,
-        );
+        let cfg = RunCmdConfig {
+            pretend: PretendStatus::Pretend,
+            interactive: InteractiveStatus::Off,
+        };
+        let res = exec_and_print_command(Command::new("ls").arg("-l"), "ls -l".to_string(), &cfg);
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
     #[test]
     fn test_exec_command() {
-        let res = exec_and_print_command(
-            Command::new("ls").arg("-l"),
-            "ls -l".to_string(),
-            &PretendStatus::RunTheDamnThing,
-        );
+        let cfg = RunCmdConfig {
+            pretend: PretendStatus::RunTheDamnThing,
+            interactive: InteractiveStatus::Off,
+        };
+        let res = exec_and_print_command(Command::new("ls").arg("-l"), "ls -l".to_string(), &cfg);
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 
     #[test]
     fn test_exec_command_err() {
+        let cfg = RunCmdConfig {
+            pretend: PretendStatus::RunTheDamnThing,
+            interactive: InteractiveStatus::Off,
+        };
         let res = exec_and_print_command(
             Command::new("ls").arg("./IamNotaPathPleaseDontFindMe"),
             "ls ./unit-test-temp/iamnotapathpleasedontfindme".to_string(),
-            &PretendStatus::RunTheDamnThing,
+            &cfg,
         );
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
