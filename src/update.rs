@@ -1,4 +1,4 @@
-use crate::{error::JanitorError, kernel::InstalledKernel, utils};
+use crate::{error::JanitorError, kernel::InstalledKernel, utils, JanitorResultErr};
 use std::{path::Path, process::Command};
 
 #[derive(PartialEq, Eq)]
@@ -25,10 +25,10 @@ pub fn copy_config(
     let newest_src_path = match &newest_built_kernel.source_path {
         Some(p) => p,
         None => {
-            return Err(JanitorError::from(format!(
+            return JanitorResultErr!(
                 "Could not find a source directory for kernel version {}",
                 newest_built_kernel.version
-            )))
+            )
         }
     };
 
@@ -51,11 +51,11 @@ pub fn copy_config(
             }
         };
     } else {
-        return Err(format!(
+        return JanitorResultErr!(
             "Could not find a config file in {:?} for kernel version {:?}",
-            install_path, newest_built_kernel.version
-        )
-        .into());
+            install_path,
+            newest_built_kernel.version
+        );
     };
 
     Ok(())

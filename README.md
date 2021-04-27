@@ -72,7 +72,7 @@ root $ cargo run --release --manual-edit
 * [x] Grab `HOME` from environment variable, unsure why this wasn't working
 * [x] Actions should be optionally interactive
     - [ ] test
-* [ ] Create macro for making a JanitorError with formatted input
+* [x] Create macro for making a JanitorError with formatted input
     - a wrapper for `format!`
 * [ ] Allow deletion of specifc kernel versions
 * [ ] Deal with non-symlinks in ~/.config file search

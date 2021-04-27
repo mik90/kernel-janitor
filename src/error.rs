@@ -6,6 +6,21 @@ pub struct JanitorError {
     message: String,
 }
 
+/// Use like `format!` but it will create a generic JanitorError instead
+#[macro_export]
+macro_rules! JanitorError {
+    ($($arg:tt)*) => {{
+        JanitorError::from(format!($($arg)*))
+    }}
+}
+/// Use like `format!` but it will create a generic JanitorError wrapped in an Err
+#[macro_export]
+macro_rules! JanitorResultErr {
+    ($($arg:tt)*) => {{
+        Err(JanitorError::from(format!($($arg)*)))
+    }}
+}
+
 impl fmt::Display for JanitorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -77,5 +92,11 @@ mod tests {
     fn compile_test() {
         let io_err = io::Error::new(std::io::ErrorKind::Other, "some_error");
         let _ = JanitorError::from(io_err);
+    }
+
+    #[test]
+    fn macro_test() {
+        let err_str = "error";
+        let _ = JanitorError!("Hello, formatted {}", err_str);
     }
 }
