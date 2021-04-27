@@ -20,13 +20,13 @@ fn try_main() -> Result<(), JanitorError> {
             "manual_edit",
             "-m",
             "--manual-edit",
-            "Newest installed config file will be copied to the newest installed source directory",
+            "Avoids auto-copying of config file to newest installed source directory",
         )
         .with_flag(
             "clean_only",
             "-c",
             "--clean-only",
-            "Clean up the install, source, and module directories then exit",
+            "Deletes extra installations, count is specified in NumVersionsToKeep in config file.",
         )
         .with_flag(
             "interactive",
@@ -44,7 +44,7 @@ fn try_main() -> Result<(), JanitorError> {
             "pretend",
             "-p",
             "--pretend",
-            "Don't actually run the command, just print it out",
+            "Don't actually run the commands, just print them out",
         )
         .parse_args_from_env();
 
