@@ -22,15 +22,7 @@ pub fn copy_config(
     install_path: &Path,
     newest_built_kernel: &InstalledKernel,
 ) -> Result<(), JanitorError> {
-    let newest_src_path = match &newest_built_kernel.source_path {
-        Some(p) => p,
-        None => {
-            return JanitorResultErr!(
-                "Could not find a source directory for kernel version {}",
-                newest_built_kernel.version
-            )
-        }
-    };
+    let newest_src_path = install_path.join("linux");
 
     // Copy most recent kernel config over
     if let Some(installed_config) = &newest_built_kernel.config_path {
