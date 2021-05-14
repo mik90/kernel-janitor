@@ -74,7 +74,7 @@ root $ cargo run --release --manual-edit
     - [ ] test
 * [x] Create macro for making a JanitorError with formatted input
     - a wrapper for `format!`
-* [ ] Allow deletion of specifc kernel versions
+* [ ] Allow deletion of specific kernel versions
 * [ ] Deal with non-symlinks in ~/.config file search
 
 ### Ideas
