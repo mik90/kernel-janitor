@@ -1,5 +1,9 @@
 use crate::{error::JanitorError, kernel::InstalledKernel, utils, JanitorResultErr};
-use std::{path::Path, process::Command};
+use std::{
+    io::Read,
+    path::Path,
+    process::{Command, Stdio},
+};
 
 #[derive(PartialEq, Eq)]
 pub enum PretendStatus {
@@ -22,20 +26,10 @@ pub fn copy_config(
     install_path: &Path,
     newest_built_kernel: &InstalledKernel,
 ) -> Result<(), JanitorError> {
-    let newest_src_path = match &newest_built_kernel.source_path {
-        Some(p) => p,
-        None => {
-            return JanitorResultErr!(
-                "Could not find a source directory for kernel version {}",
-                newest_built_kernel.version
-            )
-        }
-    };
-
     // Copy most recent kernel config over
     if let Some(installed_config) = &newest_built_kernel.config_path {
-        // Install to $newest_src_path/.config
-        let to = Path::new(&newest_src_path).join(".config");
+        // Install to /usr/src/linux/.config (aka $install_path/linux)
+        let to = install_path.join("linux").join(".config");
         let cmd_desc = format!("copy from {:?} to {:?}", installed_config, to);
         match &config.pretend {
             PretendStatus::Pretend => {
@@ -159,18 +153,26 @@ pub fn cleanup_old_installs(
     }
 }
 
-pub fn interactive_delete(installed_kernels: Vec<InstalledKernel>) -> Result<(), JanitorError> {
-    // List all kernels and assign them letters, then allow deletion by selection
-    //let letters_and_kernels = installed_kernels.zip(["a"..].into_iter());
-    let size = installed_kernels.len();
-    let letters: Vec<_> = ["a"..].into_iter().take(size).collect();
-    let letters_and_kernels = installed_kernels.iter().zip(letters);
-    for letter_and_kernel in letters_and_kernels {
-        println!("{}). {}", letter_and_kernel.0, letter_and_kernel.1);
-    }
-    Ok(())
-}
+// Interactive deletion of kernels
+pub fn delete_interactive(installed_kernels: Vec<InstalledKernel>) -> Result<(), JanitorError> {
+    let choices = ('a'..='z').collect::<Vec<char>>();
+    /*
+    let choices_and_kernels = choices.iter().zip(installed_kernels.iter());
+    println!("Listing installed kernels (oldest to newest)...\n");
+    &choices_and_kernels.map(|(choice, kernel)| println!("{}) {}\n", choice, &kernel));
 
+    println!("Which kernel installation(s) to delete?");
+    let mut stdin = std::io::stdin();
+    let mut buf = String::new();
+    stdin.read_to_string(&mut buf)?;
+    let buf = buf.to_ascii_lowercase();
+    for c in buf.chars() {
+        if let Some((_, kernel)) = choices_and_kernels.find(|(choice, _)| &&c == choice) {
+            kernel.uninstall(&PretendStatus::RunTheDamnThing)?;
+        }
+    }*/
+    todo!("Not done yet");
+}
 #[cfg(test)]
 mod test {
     use super::*;

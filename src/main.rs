@@ -47,10 +47,10 @@ fn try_main() -> Result<(), JanitorError> {
             "Don't actually run the commands, just print them out",
         )
         .with_flag(
-            "delete",
+            "delete_interactive",
             "-d",
             "--delete",
-            "Allows user to select kernels to delete",
+            "Delete specific kernel versions interactively",
         )
         .parse_args_from_env();
 
@@ -100,6 +100,11 @@ fn try_main() -> Result<(), JanitorError> {
     }
     if pretend == PretendStatus::RunTheDamnThing && !utils::user_is_root()? {
         return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
+    }
+
+    if parsed_results.flag_enabled("delete_interactive") {
+        update::delete_interactive(installed_kernels)?;
+        return Ok(());
     }
 
     // Grab the newest kernel that already has a config
