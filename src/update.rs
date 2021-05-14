@@ -158,3 +158,40 @@ pub fn cleanup_old_installs(
         removal_result
     }
 }
+
+pub fn interactive_delete(installed_kernels: Vec<InstalledKernel>) -> Result<(), JanitorError> {
+    // List all kernels and assign them letters, then allow deletion by selection
+    //let letters_and_kernels = installed_kernels.zip(["a"..].into_iter());
+    let size = installed_kernels.len();
+    let letters: Vec<_> = ["a"..].into_iter().take(size).collect();
+    let letters_and_kernels = installed_kernels.iter().zip(letters);
+    for letter_and_kernel in letters_and_kernels {
+        println!("{}). {}", letter_and_kernel.0, letter_and_kernel.1);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{kernel::KernelSearch, utils::tests::*};
+
+    fn two_installed_kernels() {
+
+        cleanup_test_dir();
+        init_test_dir();
+
+        let dummy_install = InstalledKernel::create_test_version("5.4.97", false);
+        let dummy_install_old = InstalledKernel::create_test_version("5.4.97", true);
+        let install_path = get_test_install_pathbuf();
+        let module_path = get_test_module_pathbuf();
+        let src_path = get_test_src_pathbuf();
+
+        let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute().unwrap()
+    }
+
+    #[test]
+    fn uninstall_kernels() {
+        let kernels = two_installed_kernels();
+    }
+}

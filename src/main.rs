@@ -46,6 +46,12 @@ fn try_main() -> Result<(), JanitorError> {
             "--pretend",
             "Don't actually run the commands, just print them out",
         )
+        .with_flag(
+            "delete",
+            "-d",
+            "--delete",
+            "Allows user to select kernels to delete",
+        )
         .parse_args_from_env();
 
     if parsed_results.flag_enabled("help") {
