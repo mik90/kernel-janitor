@@ -1,6 +1,6 @@
 use crate::{error::JanitorError, kernel::InstalledKernel, utils, JanitorResultErr};
 use std::{
-    io::Read,
+    io::{self, BufRead, Write},
     path::Path,
     process::{Command, Stdio},
 };
@@ -153,6 +153,23 @@ pub fn cleanup_old_installs(
     }
 }
 
+// Useful for testing interactive action
+// https://stackoverflow.com/questions/28370126/how-can-i-test-stdin-and-stdout
+fn prompt_for_deletion<R, W>(
+    mut reader: R,
+    mut writer: W,
+    choices: &[char],
+) -> Result<char, JanitorError>
+where
+    R: BufRead,
+    W: Write,
+{
+    write!(&mut writer, "Pick a kernel to delete")?;
+    let mut s = String::new();
+    reader.read_line(&mut s)?;
+    Ok('a')
+}
+
 // Interactive deletion of kernels
 pub fn delete_interactive(installed_kernels: Vec<InstalledKernel>) -> Result<(), JanitorError> {
     let choices = ('a'..='z').collect::<Vec<char>>();
@@ -179,7 +196,6 @@ mod test {
     use crate::{kernel::KernelSearch, utils::tests::*};
 
     fn two_installed_kernels() {
-
         cleanup_test_dir();
         init_test_dir();
 
@@ -189,7 +205,9 @@ mod test {
         let module_path = get_test_module_pathbuf();
         let src_path = get_test_src_pathbuf();
 
-        let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path).execute().unwrap()
+        let installed_kernels = KernelSearch::new(&install_path, &src_path, &module_path)
+            .execute()
+            .unwrap();
     }
 
     #[test]
