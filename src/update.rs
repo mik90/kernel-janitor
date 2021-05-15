@@ -22,34 +22,25 @@ pub struct RunCmdConfig {
 
 /// Expects the newest kernel that has already been built
 pub fn copy_config(
-    config: &RunCmdConfig,
-    install_path: &Path,
-    newest_built_kernel: &InstalledKernel,
+    cmd_config: &RunCmdConfig,
+    newest_config: &Path,
+    newest_source_dir: &Path,
 ) -> Result<(), JanitorError> {
     // Copy most recent kernel config over
-    if let Some(installed_config) = &newest_built_kernel.config_path {
-        // Install to /usr/src/linux/.config (aka $install_path/linux)
-        let to = install_path.join("linux").join(".config");
-        let cmd_desc = format!("copy from {:?} to {:?}", installed_config, to);
-        match &config.pretend {
-            PretendStatus::Pretend => {
-                println!("Pretending to {}", &cmd_desc);
+    let to = newest_source_dir.join(".config");
+    let cmd_desc = format!("copy from {:?} to {:?}", newest_config, to);
+    match &cmd_config.pretend {
+        PretendStatus::Pretend => {
+            println!("Pretending to {}", &cmd_desc);
+        }
+        PretendStatus::RunTheDamnThing => {
+            utils::maybe_prompt_for_confirmation(cmd_config, &cmd_desc)?;
+            println!("Running {}", cmd_desc);
+            let res = std::fs::copy(newest_config, to);
+            if res.is_err() {
+                return Err(res.unwrap_err().into());
             }
-            PretendStatus::RunTheDamnThing => {
-                utils::maybe_prompt_for_confirmation(config, &cmd_desc)?;
-                println!("Running {}", cmd_desc);
-                let res = std::fs::copy(installed_config, to);
-                if res.is_err() {
-                    return Err(res.unwrap_err().into());
-                }
-            }
-        };
-    } else {
-        return JanitorResultErr!(
-            "Could not find a config file in {:?} for kernel version {:?}",
-            install_path,
-            newest_built_kernel.version
-        );
+        }
     };
 
     Ok(())
@@ -130,10 +121,10 @@ pub fn gen_grub_cfg(config: &RunCmdConfig, install_path: &Path) -> Result<(), Ja
 
 //  cleaning up old kernels and their related installed items
 pub fn cleanup_old_installs(
-    config: &RunCmdConfig,
+    cmd_config: &RunCmdConfig,
     num_versions_to_keep: usize,
     installed_kernels: Vec<InstalledKernel>,
-) -> std::io::Result<()> {
+) -> Result<(), JanitorError> {
     if installed_kernels.len() <= num_versions_to_keep {
         Ok(println!(
             "Configured to delete {} versions but there are only {} present. Skipping cleanup.",
@@ -144,12 +135,16 @@ pub fn cleanup_old_installs(
         // There's more installed kernels than there are to keep
         // The 'pretend' handling is dealt with in `kernel.uninstall`
         let num_versions_to_delete = installed_kernels.len() - num_versions_to_keep;
+        utils::maybe_prompt_for_confirmation(
+            cmd_config,
+            &format!("Delete {} old kernels?", num_versions_to_delete),
+        )?;
         let removal_result: Result<_, _> = installed_kernels
             .into_iter()
             .take(num_versions_to_delete)
-            .map(|kernel| kernel.uninstall(&config.pretend))
+            .map(|kernel| kernel.uninstall(&cmd_config.pretend))
             .collect();
-        removal_result
+        removal_result.map_err(|e| JanitorError::from(e))
     }
 }
 

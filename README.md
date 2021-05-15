@@ -74,6 +74,9 @@ root $ cargo run --release --manual-edit
     - [ ] test
 * [x] Create macro for making a JanitorError with formatted input
     - a wrapper for `format!`
+* [x] Fix interactive prompt since it just hangs
+* [x] Interactive prompt doesn't execute for kenel deletions
+* [ ] Allow for testing of interactive actions
 * [ ] Allow deletion of specific kernel versions
 * [ ] Deal with non-symlinks in ~/.config file search
 

@@ -4,6 +4,8 @@ mod error;
 mod kernel;
 mod update;
 mod utils;
+use std::borrow::Borrow;
+
 use error::JanitorError;
 use update::{InteractiveStatus, PretendStatus};
 fn main() {
@@ -107,17 +109,29 @@ fn try_main() -> Result<(), JanitorError> {
         return Ok(());
     }
 
-    // Grab the newest kernel that already has a config
+    // Grab the newest config
     // The last element is the newest kernel so search in reverse
-    let newest_built_kernel = match installed_kernels.iter().rfind(|k| k.config_path.is_some()) {
-        Some(k) => k,
-        None => {
-            return Err(JanitorError::from(format!(
-                "Could not find any kernels with an installed configuration file in {:?}",
-                install_path
-            )))
-        }
-    };
+    let newest_config = installed_kernels
+        .iter()
+        .rfind(|k| k.config_path.is_some())
+        .ok_or(JanitorError!(
+            "Could not find any kernels with an installed configuration file in {:?}",
+            install_path
+        ))?
+        .config_path
+        .clone()
+        .ok_or(JanitorError!("config_path shouldn't have been empty, wtf"))?;
+
+    let newest_source_dir = installed_kernels
+        .iter()
+        .rfind(|k| k.source_path.is_some())
+        .ok_or(JanitorError!(
+            "Could not find any kernels with a source dir in {:?}",
+            install_path
+        ))?
+        .source_path
+        .clone()
+        .ok_or(JanitorError!("source_path shouldn't have been empty, wtf"))?;
 
     let cmd_config = update::RunCmdConfig {
         pretend,
@@ -128,7 +142,7 @@ fn try_main() -> Result<(), JanitorError> {
         println!("Expecting a kernel config to be present in the newest kernel source directory");
     } else {
         println!("Auto-copying config enabled");
-        update::copy_config(&cmd_config, &install_path, &newest_built_kernel)?;
+        update::copy_config(&cmd_config, &newest_config, &newest_source_dir)?;
     }
 
     // Nested matches can't be the right thing to do

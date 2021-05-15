@@ -32,9 +32,9 @@ pub fn maybe_prompt_for_confirmation(
     // Keep asking the user for input until they send something normal
     loop {
         println!("{}? (y/n)", cmd_desc);
-        let mut stdin = std::io::stdin();
+        let stdin = std::io::stdin();
         let mut buf = String::new();
-        stdin.read_to_string(&mut buf)?;
+        stdin.read_line(&mut buf)?;
         let buf = buf.to_ascii_lowercase();
         if buf.starts_with("y") {
             return Ok(());
