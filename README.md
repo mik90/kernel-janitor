@@ -78,6 +78,7 @@ root $ cargo run --release --manual-edit
 * [x] Interactive prompt doesn't execute for kenel deletions
 * [ ] Allow for testing of interactive actions
 * [ ] Allow deletion of specific kernel versions
+  - just use a hash map that maps chars to InstalledKernels
 * [ ] Deal with non-symlinks in ~/.config file search
 
 ### Ideas
