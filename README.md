@@ -76,6 +76,7 @@ root $ cargo run --release --manual-edit
     - a wrapper for `format!`
 * [x] Fix interactive prompt since it just hangs
 * [x] Interactive prompt doesn't execute for kenel deletions
+* [ ] By default, run `--pretend` and then prompt for confirmation to run for real
 * [ ] Allow for testing of interactive actions
 * [ ] Allow deletion of specific kernel versions
   - just use a hash map that maps chars to InstalledKernels
