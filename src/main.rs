@@ -103,8 +103,13 @@ fn try_main() -> Result<(), JanitorError> {
         return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
     }
 
+    let cmd_config = update::RunCmdConfig {
+        pretend,
+        interactive,
+    };
+
     if parsed_results.flag_enabled("delete_interactive") {
-        update::delete_interactive(installed_kernels)?;
+        update::delete_interactive(&cmd_config, installed_kernels)?;
         return Ok(());
     }
 
@@ -135,11 +140,6 @@ fn try_main() -> Result<(), JanitorError> {
         .ok_or(JanitorErrorFrom!(
             "source_path shouldn't have been empty, wtf"
         ))?;
-
-    let cmd_config = update::RunCmdConfig {
-        pretend,
-        interactive,
-    };
 
     if parsed_results.flag_enabled("manual_edit") {
         println!("Expecting a kernel config to be present in the newest kernel source directory");
