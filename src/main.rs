@@ -74,6 +74,11 @@ fn try_main() -> Result<(), JanitorError> {
         false => InteractiveStatus::Off,
     };
 
+    let cmd_config = update::RunCmdConfig {
+        pretend,
+        interactive,
+    };
+
     let config = conf::Config::find_in_fs()?;
 
     /*
@@ -99,14 +104,10 @@ fn try_main() -> Result<(), JanitorError> {
         }
         return Ok(());
     }
-    if pretend == PretendStatus::RunTheDamnThing && !utils::user_is_root()? {
+
+    if cmd_config.pretend == PretendStatus::RunTheDamnThing && !utils::user_is_root()? {
         return Err("User is not root and \'pretend\' isn\'t specified. Try running with \'-p\' or \'--pretend\' Exiting...".into());
     }
-
-    let cmd_config = update::RunCmdConfig {
-        pretend,
-        interactive,
-    };
 
     if parsed_results.flag_enabled("delete_interactive") {
         update::delete_interactive(&cmd_config, installed_kernels)?;

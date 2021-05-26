@@ -163,6 +163,7 @@ pub fn delete_interactive(
     installed_kernels: Vec<InstalledKernel>,
 ) -> Result<(), JanitorError> {
     // Zip up letters with kernels
+    // If you have more than 26 kernels then you're kind of screwed
     let mut choice_map: BTreeMap<char, InstalledKernel> = ('a'..='z')
         .into_iter()
         .zip(installed_kernels.into_iter().rev())
@@ -186,6 +187,7 @@ pub fn delete_interactive(
 #[cfg(test)]
 mod test {
     use super::*;
+    /*
     use crate::{kernel::KernelSearch, utils::tests::*};
 
     fn two_installed_kernels() {
@@ -202,6 +204,7 @@ mod test {
             .execute()
             .unwrap();
     }
+    */
 
     #[test]
     fn check_input_prompt() -> Result<(), JanitorError> {
