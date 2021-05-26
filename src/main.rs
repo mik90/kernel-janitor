@@ -4,7 +4,6 @@ mod error;
 mod kernel;
 mod update;
 mod utils;
-use std::borrow::Borrow;
 
 use error::JanitorError;
 use update::{InteractiveStatus, PretendStatus};
@@ -114,24 +113,28 @@ fn try_main() -> Result<(), JanitorError> {
     let newest_config = installed_kernels
         .iter()
         .rfind(|k| k.config_path.is_some())
-        .ok_or(JanitorError!(
+        .ok_or(JanitorErrorFrom!(
             "Could not find any kernels with an installed configuration file in {:?}",
             install_path
         ))?
         .config_path
         .clone()
-        .ok_or(JanitorError!("config_path shouldn't have been empty, wtf"))?;
+        .ok_or(JanitorErrorFrom!(
+            "config_path shouldn't have been empty, wtf"
+        ))?;
 
     let newest_source_dir = installed_kernels
         .iter()
         .rfind(|k| k.source_path.is_some())
-        .ok_or(JanitorError!(
+        .ok_or(JanitorErrorFrom!(
             "Could not find any kernels with a source dir in {:?}",
             install_path
         ))?
         .source_path
         .clone()
-        .ok_or(JanitorError!("source_path shouldn't have been empty, wtf"))?;
+        .ok_or(JanitorErrorFrom!(
+            "source_path shouldn't have been empty, wtf"
+        ))?;
 
     let cmd_config = update::RunCmdConfig {
         pretend,

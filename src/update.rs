@@ -1,6 +1,9 @@
-use crate::{error::JanitorError, kernel::InstalledKernel, utils, JanitorResultErr};
+use crate::{
+    error::JanitorError, kernel::InstalledKernel, utils, JanitorErrorFrom, JanitorResultErr,
+};
 use std::{
-    io::{self, BufRead, Write},
+    collections::HashMap,
+    io::{self, stdout, BufRead, Write},
     path::Path,
     process::{Command, Stdio},
 };
@@ -150,40 +153,43 @@ pub fn cleanup_old_installs(
 
 // Useful for testing interactive action
 // https://stackoverflow.com/questions/28370126/how-can-i-test-stdin-and-stdout
-fn prompt_for_deletion<R, W>(
-    mut reader: R,
-    mut writer: W,
-    choices: &[char],
-) -> Result<char, JanitorError>
+fn prompt_for_char<R, W>(mut reader: R, mut writer: W) -> Result<char, JanitorError>
 where
     R: BufRead,
     W: Write,
 {
-    write!(&mut writer, "Pick a kernel to delete")?;
     let mut s = String::new();
     reader.read_line(&mut s)?;
-    Ok('a')
+    s.chars()
+        .next()
+        .ok_or(JanitorErrorFrom!("Could not parse input: {}", s))
 }
 
 // Interactive deletion of kernels
 pub fn delete_interactive(installed_kernels: Vec<InstalledKernel>) -> Result<(), JanitorError> {
-    let choices = ('a'..='z').collect::<Vec<char>>();
-    /*
-    let choices_and_kernels = choices.iter().zip(installed_kernels.iter());
-    println!("Listing installed kernels (oldest to newest)...\n");
-    &choices_and_kernels.map(|(choice, kernel)| println!("{}) {}\n", choice, &kernel));
+    // Zip up letters with kernels
+    let choice_map: HashMap<char, InstalledKernel> = ('a'..='z')
+        .into_iter()
+        .zip(installed_kernels.into_iter())
+        .collect();
 
-    println!("Which kernel installation(s) to delete?");
-    let mut stdin = std::io::stdin();
-    let mut buf = String::new();
-    stdin.read_to_string(&mut buf)?;
-    let buf = buf.to_ascii_lowercase();
-    for c in buf.chars() {
-        if let Some((_, kernel)) = choices_and_kernels.find(|(choice, _)| &&c == choice) {
-            kernel.uninstall(&PretendStatus::RunTheDamnThing)?;
-        }
-    }*/
-    todo!("Not done yet");
+    println!("Listing installed kernels (oldest to newest)...\n");
+    for (letter, kernel) in &choice_map {
+        println!("{}) {}", letter, kernel);
+    }
+    let stdio = std::io::stdin();
+    let input = stdio.lock();
+    let output = std::io::stdout();
+    let choice = prompt_for_char(input, output)?;
+
+    todo!("The below doesnt compile yet");
+    /*
+       choice_map
+           .get(&choice)
+           .ok_or(JanitorErrorFrom!("Could not find selected kernel"))?
+           .uninstall(&PretendStatus::RunTheDamnThing)?;
+    */
+    Ok(())
 }
 #[cfg(test)]
 mod test {
@@ -206,7 +212,12 @@ mod test {
     }
 
     #[test]
-    fn uninstall_kernels() {
+    fn uninstall_kernels() -> Result<(), JanitorError> {
         let kernels = two_installed_kernels();
+        let input = b"a";
+        let mut output = Vec::new();
+        let choice = prompt_for_char(&input[..], &mut output)?;
+        assert_eq!(choice, 'a');
+        Ok(())
     }
 }

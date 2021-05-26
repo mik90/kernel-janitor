@@ -8,7 +8,7 @@ pub struct JanitorError {
 
 /// Use like `format!` but it will create a generic JanitorError instead
 #[macro_export]
-macro_rules! JanitorError {
+macro_rules! JanitorErrorFrom {
     ($($arg:tt)*) => {{
         JanitorError::from(format!($($arg)*))
     }}
@@ -97,6 +97,6 @@ mod tests {
     #[test]
     fn macro_test() {
         let err_str = "error";
-        let _ = JanitorError!("Hello, formatted {}", err_str);
+        let _ = JanitorErrorFrom!("Hello, formatted {}", err_str);
     }
 }

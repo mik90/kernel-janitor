@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader},
     process::Command,
     thread,
 };
