@@ -1,4 +1,4 @@
-use crate::error::JanitorError;
+use crate::{error::JanitorError, JanitorErrorFrom};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -107,6 +107,7 @@ impl Config {
         Ok(Config { entries })
     }
 
+    /// Find a Config in the filesystem
     pub fn find_in_fs() -> Result<Config, JanitorError> {
         let local_conf = PathBuf::from("./kernel-janitor.conf");
         if local_conf.exists() {
@@ -116,18 +117,14 @@ impl Config {
 
         let home_dir =
             std::env::var_os("HOME").ok_or("No \'HOME\' environment variable was found")?;
-        let home_conf_path = PathBuf::from(format!(
-            "{}/.config/kernel-janitor.conf",
-            home_dir.to_string_lossy()
-        ));
-        // TODO only conditionally resolve symlinksa
-        // TODO Print out the symlink resolution
-        let home_conf = std::fs::read_link(&home_conf_path).map_err(|_| {
-            JanitorError::from(format!(
-                "No config file found at {:?} or at {:?}",
-                home_conf_path, local_conf
-            ))
-        })?;
+        let home_dir = home_dir.to_str().ok_or(JanitorErrorFrom!(
+            "Could not convert {:?} to a str",
+            home_dir
+        ))?;
+        let home_conf = Path::new(home_dir)
+            .join(".config")
+            .join("kernel-janitor.conf");
+
         if home_conf.exists() {
             println!("Found config at {:?}", &home_conf);
             return Config::new(&home_conf);
@@ -251,6 +248,12 @@ mod tests {
     }
     #[test]
     fn get_home_var() {
+        let home_dir = std::env::var_os("HOME");
+        println!("Home dir: {:?}", home_dir);
+        assert!(home_dir.is_some());
+    }
+    #[test]
+    fn open_symlink() {
         let home_dir = std::env::var_os("HOME");
         println!("Home dir: {:?}", home_dir);
         assert!(home_dir.is_some());
