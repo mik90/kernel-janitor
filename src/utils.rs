@@ -186,7 +186,7 @@ pub mod tests {
     }
 
     pub fn get_test_src_path_string() -> String {
-        format!("./{}/modules", get_test_dir_string())
+        format!("./{}/src", get_test_dir_string())
     }
     pub fn get_test_src_pathbuf() -> PathBuf {
         PathBuf::from(get_test_src_path_string())
