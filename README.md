@@ -1,6 +1,6 @@
 # kernel-janitor
 Helper for building, installing, and cleaning kernel installations. Specifically made to deal with Gentoo although it shouldn't require it.
-The only dependency is the tooling you need to build the Linux kernel and coreutils.
+The only dependency is the tooling you need to build the Linux kernel.
 
 I could use sys-kernel/genkernel but instead I rolled my own. Originally it was fairly easy to build/install/cleanup but then I wanted
 to automate more. I wrote a script in Python that became beefier and now I'm rewriting it in Rust.
