@@ -86,7 +86,7 @@ fn try_main() -> Result<(), JanitorError> {
      * I may need to implement a `mv` that copies content and deletes the old ones.
      * Either that or just use the `mv` command
      */
-    let _ = config.get_path("TrashPath")?;
+    //let _ = config.get_path("TrashPath")?; TrashPath isn't used yet
     let num_versions_to_keep = config.get_usize("VersionsToKeep")?;
     let regen_grub_cfg = config.get_bool("RegenerateGrubConfig")?;
     let rebuild_portage_modules = config.get_bool("RebuildPortageModules")?;
