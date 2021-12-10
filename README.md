@@ -8,6 +8,10 @@ to automate more. I wrote a script in Python that became beefier and now I'm rew
 
 ## Usage
 
+First, copy [kernel-janitor-example.conf](kernel-janitor-example.conf) as to either ./kernel-janitor.conf or /etc/kernel-janitor.conf.
+
+Examine the conf file to see that it matches your system. Once that's done, you can start using it.
+
 List installed kernels
 
 ```bash
@@ -87,7 +91,7 @@ root $ cargo run --release --manual-edit
   * use dependency injection to pass in stdin/stdout
 * [x] Allow deletion of specific kernel versions
   * just use a hash map that maps chars to InstalledKernels
-* [ ] Only use a single config file in /etc/ since there shouldn't be per-user settings
+* [x] Only use a single config file in /etc/ since there shouldn't be per-user settings
 
 ### Ideas
 

@@ -107,32 +107,44 @@ impl Config {
         Ok(Config { entries })
     }
 
+    /// Eh, this isn't needed. Kernel installation configuratino isn't per-user
+    fn _get_xdg_config_dir() -> Option<PathBuf> {
+        let home_dir = std::env::var_os("HOME")
+            .ok_or("No \'HOME\' environment variable was found")
+            .ok()?;
+        let home_dir = home_dir
+            .to_str()
+            .ok_or(JanitorErrorFrom!(
+                "Could not convert {:?} to a str",
+                home_dir
+            ))
+            .ok()?;
+        Some(Path::new(home_dir).join(".config"))
+    }
+
     /// Find a Config in the filesystem
     pub fn find_in_fs() -> Result<Config, JanitorError> {
-        let local_conf = PathBuf::from("./kernel-janitor.conf");
-        if local_conf.exists() {
-            println!("Found config at {:?}", &local_conf);
-            return Config::new(&local_conf);
+        let path_list: Vec<PathBuf> = vec![
+            PathBuf::from("./kernel-janitor.conf"),
+            PathBuf::from("/etc/kernel-janitor.conf"),
+        ];
+
+        for conf_path in &path_list {
+            if conf_path.exists() {
+                println!("Found config at {:?}", &conf_path);
+                return Config::new(&conf_path);
+            }
         }
 
-        let home_dir =
-            std::env::var_os("HOME").ok_or("No \'HOME\' environment variable was found")?;
-        let home_dir = home_dir.to_str().ok_or(JanitorErrorFrom!(
-            "Could not convert {:?} to a str",
-            home_dir
-        ))?;
-        let home_conf = Path::new(home_dir)
-            .join(".config")
-            .join("kernel-janitor.conf");
-
-        if home_conf.exists() {
-            println!("Found config at {:?}", &home_conf);
-            return Config::new(&home_conf);
-        }
-
+        // Convert all the PathBufs to a Vec of &str
+        let path_strings = path_list
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
         Err(JanitorError::from(format!(
-            "No config files found at {:?} or {:?}",
-            local_conf, home_conf
+            "No config files found at {}",
+            path_strings
         )))
     }
 

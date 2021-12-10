@@ -311,23 +311,10 @@ impl fmt::Display for InstalledKernel {
 
 impl fmt::Debug for InstalledKernel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Version {:?}
-  Binary path:     {:?}
-  Config path:     {:?}
-  System map path: {:?}
-  Source path:     {:?}
-  Module path:     {:?}",
-            self.version,
-            self.vmlinuz_path,
-            self.config_path,
-            self.system_map_path,
-            self.source_path,
-            self.module_path
-        )
+        write!(f, "{}", self)
     }
 }
+
 /// Order installed kernels by their version
 impl Ord for InstalledKernel {
     fn cmp(&self, other: &Self) -> Ordering {
